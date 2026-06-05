@@ -412,38 +412,30 @@ h1 em { font-style:italic; color:var(--gold); }
   .piece-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:8.5pt; }
   .piece-composer { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:6.5pt; color:#999; flex-shrink:0; }
 
-  /* ── 체크리스트 섹션 ── */
-  #printChecklist {
-    display:block !important;
-    margin-top:10pt;
-    padding-top:7pt;
-    border-top:1pt solid #1c1c1c;
-    break-inside:avoid;
+  /* ── 곡 오른쪽 인라인 체크박스 ── */
+  .piece-checks {
+    display:none; /* 화면에서는 숨김 */
   }
 
-  .cl-title {
-    font-family:'Cormorant Garamond',serif; font-size:11pt; font-weight:600;
-    color:#1c1c1c; margin-bottom:5pt; letter-spacing:.3px;
+  /* ── 별도 체크리스트 섹션 숨김 ── */
+  #printChecklist { display:none !important; }
+
+  /* ── 인라인 체크박스 (인쇄 시 표시) ── */
+  .piece-checks {
+    display:flex !important;
+    gap:2.5pt;
+    align-items:center;
+    flex-shrink:0;
+    margin-left:4pt;
   }
 
-  .cl-grid {
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:4pt 10pt;
+  .piece-check-box {
+    width:7pt; height:7pt;
+    border:0.7pt solid #888;
+    border-radius:1pt;
+    flex-shrink:0;
+    display:block;
   }
-
-  .cl-item {
-    display:flex; align-items:flex-start; gap:4pt;
-    font-size:6.8pt; color:#333; line-height:1.4;
-  }
-
-  .cl-box {
-    width:8pt; height:8pt; border:0.8pt solid #666;
-    flex-shrink:0; margin-top:0.5pt; border-radius:1pt;
-  }
-
-  .cl-text { flex:1; }
-  .cl-text em { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:7.5pt; display:block; color:#555; }
 
   /* ── 범례 + 푸터 ── */
   #printLegend {
@@ -533,12 +525,6 @@ h1 em { font-style:italic; color:var(--gold); }
 
   <div id="performancesView" class="perf-timeline">
     <div id="timelineContainer"></div>
-  </div>
-
-  <!-- 인쇄 전용: 체크리스트 -->
-  <div id="printChecklist">
-    <div class="cl-title">연습 체크리스트</div>
-    <div class="cl-grid" id="checklistGrid"></div>
   </div>
 
   <!-- 인쇄 전용: 범례 -->
@@ -826,11 +812,13 @@ function renderCategories() {
       item.className='piece-item';
       item.style.setProperty('--print-dot',dotColor);
       item.onclick=()=>openModal(p.title,cat.name);
+      const checks = Array(7).fill('<span class="piece-check-box"></span>').join('');
       item.innerHTML=`
         <div class="piece-info">
           <span class="piece-title${isItalic?' italic':''}">${p.title}</span>
           ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
         </div>
+        <span class="piece-checks">${checks}</span>
         <button class="status-badge status-${d.status}" onclick="cycleStatus(event,'${p.title}')">${d.status}</button>
         <span class="last-played ${lpCls}">${lpStr}</span>
         <button class="record-btn" onclick="quickPlay(event,'${p.title}')" title="오늘 연주">▶</button>
