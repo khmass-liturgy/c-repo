@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>마이콜 레파토리</title>
+<title>Classical Guitar Repertory</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════
@@ -455,7 +455,8 @@ h1 em { font-style:italic; color:var(--gold); }
 
 @media screen {
   #printBody { display:block; }
-  #printChecklist, #printLegend, #printFooter { display:none; }
+  #printLegend, #printFooter { display:none; }
+  .piece-checks { display:none; }
 }
 
 @media (max-width:600px) {
@@ -1017,50 +1018,212 @@ function handleFileImport(e){
 
 /* ══════════════ PRINT ══════════════ */
 function printView() {
-  document.getElementById('printDate').textContent='출력일: '+new Date().toLocaleDateString('ko-KR');
-
-  // 접힌 카테고리 모두 열기
-  document.querySelectorAll('.category-section.collapsed').forEach(el=>el.classList.remove('collapsed'));
-
-  // 체크리스트 생성: 암보/연습중 곡만 주 7일 체크박스
-  const grid=document.getElementById('checklistGrid');
-  grid.innerHTML='';
-  const checkPieces=[];
-  categories.forEach(cat=>{
-    cat.pieces.forEach(p=>{
-      const d=getPieceData(p.title);
-      if(d.status==='암보'||d.status==='연습중') checkPieces.push({title:p.title,status:d.status});
-    });
-  });
-
-  // 공연가능/완성 중 오래된 것도 포함 (선택)
-  categories.forEach(cat=>{
-    cat.pieces.forEach(p=>{
-      const d=getPieceData(p.title);
-      if(d.status==='공연가능'||d.status==='완성'){
-        const diff=d.lastPlayed?Math.floor((Date.now()-new Date(d.lastPlayed).getTime())/86400000):999;
-        if(diff>14) checkPieces.push({title:p.title,status:d.status});
-      }
-    });
-  });
-
-  checkPieces.forEach(p=>{
-    const item=document.createElement('div');item.className='cl-item';
-    const boxes=Array(7).fill(0).map(()=>`<span class="cl-box"></span>`).join('');
-    item.innerHTML=`
-      <div style="display:flex;gap:2pt;margin-top:1pt">${boxes}</div>
-      <div class="cl-text">
-        <em>${p.title}</em>
-        <span style="font-size:6pt;color:#999">${p.status}</span>
-      </div>`;
-    grid.appendChild(item);
-  });
-
-  if(!checkPieces.length){
-    grid.innerHTML='<div style="font-size:7pt;color:#999;grid-column:span 4">연습이 필요한 곡이 없습니다 ✓</div>';
+  // 새 창에 인쇄 전용 HTML을 작성 (iframe sandbox 우회)
+  const win = window.open('', '_blank', 'width=900,height=1100');
+  if (!win) {
+    // 팝업 차단된 경우: 인라인 fallback
+    document.querySelectorAll('.category-section.collapsed').forEach(el=>el.classList.remove('collapsed'));
+    document.getElementById('printDate').textContent='출력일: '+new Date().toLocaleDateString('ko-KR');
+    window.print();
+    return;
   }
 
-  window.print();
+  // 통계 계산
+  const all = Object.values(state.pieces);
+  const stats = {
+    total: all.length,
+    ready: all.filter(p=>p.status==='공연가능').length,
+    practice: all.filter(p=>p.status==='연습중').length,
+    perf: all.reduce((s,p)=>s+(p.performances?.length||0),0),
+  };
+
+  const dotColor = { '암보':'#e85d4a','연습중':'#d4833a','완성':'#7cb87a','공연가능':'#c9a96e' };
+
+  // 카테고리별 곡 목록 HTML 생성
+  let bodyHtml = '';
+  categories.forEach(cat => {
+    if (!cat.pieces.length) return;
+    let piecesHtml = '';
+    cat.pieces.forEach(p => {
+      const d = getPieceData(p.title);
+      const isItalic = /[a-zA-Z]/.test(p.title[0]);
+      const dot = dotColor[d.status] || '#ccc';
+      const checks = Array(7).fill('<span class="check-box"></span>').join('');
+      piecesHtml += `
+        <div class="piece">
+          <span class="dot" style="background:${dot}"></span>
+          <span class="title${isItalic?' italic':''}">${p.title}</span>
+          ${p.composer?`<span class="composer">${p.composer}</span>`:''}
+          <span class="checks">${checks}</span>
+        </div>`;
+    });
+    bodyHtml += `
+      <div class="category">
+        <div class="cat-header">
+          <span class="cat-icon">${cat.icon}</span>
+          <span class="cat-name">${cat.name}</span>
+          <span class="cat-count">${cat.pieces.length}곡</span>
+        </div>
+        <div class="pieces">${piecesHtml}</div>
+      </div>`;
+  });
+
+  const today = new Date().toLocaleDateString('ko-KR');
+
+  const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Classical Guitar Repertory</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+@page { size:A4 portrait; margin:10mm 12mm; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  color:#1c1c1c; background:#fff; padding:0;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  font-size:9pt;
+}
+
+/* 화면(인쇄 전 미리보기)용 */
+@media screen {
+  body { max-width:210mm; min-height:297mm; margin:20px auto; padding:14mm; box-shadow:0 4px 20px rgba(0,0,0,.15); }
+  .print-btn-bar {
+    position:fixed; top:16px; right:16px; display:flex; gap:8px; z-index:1000;
+  }
+  .print-btn-bar button {
+    padding:10px 18px; font-family:'Noto Sans KR',sans-serif; font-size:13px;
+    border:1px solid #1c1c1c; background:#fff; color:#1c1c1c;
+    cursor:pointer; border-radius:3px; box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  .print-btn-bar button.primary { background:#1c1c1c; color:#fff; }
+  .print-btn-bar button:hover { opacity:.85; }
+}
+@media print { .print-btn-bar { display:none !important; } body { padding:0; box-shadow:none; margin:0; } }
+
+header {
+  padding:0 0 6pt; border-bottom:1.5pt solid #1c1c1c; margin-bottom:8pt;
+  break-inside:avoid;
+}
+.header-label { font-size:6pt; letter-spacing:3px; color:#888; margin-bottom:3pt; text-transform:uppercase; }
+h1 { font-family:'Cormorant Garamond',serif; font-size:20pt; font-weight:300; line-height:1.1; }
+h1 em { font-style:italic; color:#8a6d3e; }
+.stats { display:flex; gap:18pt; margin-top:5pt; }
+.stat { display:flex; flex-direction:column; }
+.stat-num { font-family:'Cormorant Garamond',serif; font-size:14pt; color:#8a6d3e; line-height:1; }
+.stat-label { font-size:5.5pt; letter-spacing:1.5px; color:#999; text-transform:uppercase; margin-top:2pt; }
+
+/* 2컬럼 그리드 */
+.body-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  column-gap:14pt;
+  row-gap:0;
+}
+
+.category {
+  margin-bottom:6pt;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+.cat-header {
+  display:flex; align-items:baseline; gap:5pt;
+  padding:3pt 0 2pt;
+  border-bottom:0.8pt solid #b8a88a;
+  margin-bottom:2pt;
+}
+.cat-icon { font-size:9pt; }
+.cat-name { font-family:'Cormorant Garamond',serif; font-size:10.5pt; font-weight:600; letter-spacing:.2px; flex:1; }
+.cat-count { font-size:6.5pt; color:#999; }
+
+.pieces { display:flex; flex-direction:column; }
+
+.piece {
+  display:flex; align-items:center; gap:4pt;
+  padding:2.5pt 0 2.5pt 10pt;
+  border-bottom:0.25pt solid #e8e0d4;
+  position:relative;
+}
+.piece:last-child { border-bottom:none; }
+
+.dot {
+  width:4pt; height:4pt; border-radius:50%;
+  position:absolute; left:2pt; top:50%; transform:translateY(-50%);
+  flex-shrink:0;
+}
+
+.title { font-size:8pt; font-weight:400; flex:1; min-width:0; }
+.title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:9pt; font-weight:400; }
+.composer { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:6.5pt; color:#888; margin-right:3pt; }
+
+.checks { display:flex; gap:1.8pt; flex-shrink:0; }
+.check-box {
+  width:7pt; height:7pt;
+  border:0.7pt solid #888;
+  border-radius:1pt;
+  display:block;
+}
+
+/* 푸터 */
+.footer-info {
+  margin-top:8pt; padding-top:5pt;
+  border-top:0.5pt solid #ccc;
+  display:flex; justify-content:space-between;
+  font-size:6.5pt; color:#888;
+  break-inside:avoid;
+}
+.legend { display:flex; gap:10pt; }
+.legend-item { display:flex; align-items:center; gap:2pt; }
+.legend-dot { width:5pt; height:5pt; border-radius:50%; display:inline-block; }
+</style>
+</head>
+<body>
+
+<div class="print-btn-bar">
+  <button onclick="window.close()">닫기</button>
+  <button class="primary" onclick="window.print()">🖨 인쇄</button>
+</div>
+
+<header>
+  <div class="header-label">Classical Guitar</div>
+  <h1>나의 <em>레퍼토리</em></h1>
+  <div class="stats">
+    <div class="stat"><span class="stat-num">${stats.total}</span><span class="stat-label">Total</span></div>
+    <div class="stat"><span class="stat-num">${stats.ready}</span><span class="stat-label">공연가능</span></div>
+    <div class="stat"><span class="stat-num">${stats.practice}</span><span class="stat-label">연습중</span></div>
+    <div class="stat"><span class="stat-num">${stats.perf}</span><span class="stat-label">공연이력</span></div>
+  </div>
+</header>
+
+<div class="body-grid">
+  ${bodyHtml}
+</div>
+
+<div class="footer-info">
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:#e85d4a"></span>암보</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#d4833a"></span>연습중</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#7cb87a"></span>완성</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#c9a96e"></span>공연가능</span>
+  </div>
+  <div>출력일: ${today} · Classical Guitar Repertory</div>
+</div>
+
+<script>
+  // 폰트 로딩 후 자동으로 인쇄 대화상자 열기
+  document.fonts.ready.then(() => {
+    setTimeout(() => window.print(), 200);
+  });
+<\/script>
+
+</body>
+</html>`;
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }
 
 /* ══════════════ TOAST ══════════════ */
