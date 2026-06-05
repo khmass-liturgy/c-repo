@@ -194,6 +194,85 @@ h1 em { font-style:italic; color:var(--gold); }
   outline:none; border-radius:2px; resize:vertical; min-height:68px; transition:border-color .2s;
 }
 .memo-input:focus { border-color:var(--gold); }
+
+/* ── 달력 피커 ── */
+.date-picker-wrap { position:relative; flex-shrink:0; }
+
+.date-trigger {
+  display:flex; align-items:center; gap:7px;
+  background:var(--bg); border:1px solid var(--border); color:var(--cream);
+  padding:7px 11px; font-size:13px; font-family:'Cormorant Garamond',serif;
+  outline:none; border-radius:2px; cursor:pointer; transition:border-color .2s;
+  white-space:nowrap; min-width:118px;
+}
+.date-trigger:hover, .date-trigger.open { border-color:var(--gold); color:var(--cream); }
+.date-trigger .dt-icon { font-size:13px; opacity:.6; }
+.date-trigger .dt-val { flex:1; }
+
+.cal-popup {
+  position:absolute; top:calc(100% + 6px); left:0; z-index:300;
+  background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  padding:14px; width:248px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:none;
+}
+.cal-popup.open { display:block; }
+
+.cal-nav {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+.cal-nav-btn {
+  background:transparent; border:1px solid var(--border); color:var(--muted);
+  width:26px; height:26px; border-radius:3px; cursor:pointer; font-size:13px;
+  display:flex; align-items:center; justify-content:center; transition:all .15s;
+}
+.cal-nav-btn:hover { border-color:var(--gold); color:var(--gold); }
+.cal-month-label {
+  font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:400;
+  color:var(--cream); letter-spacing:.5px; cursor:pointer;
+}
+.cal-month-label:hover { color:var(--gold); }
+
+.cal-dow {
+  display:grid; grid-template-columns:repeat(7,1fr);
+  margin-bottom:4px;
+}
+.cal-dow span {
+  text-align:center; font-size:9.5px; letter-spacing:.5px;
+  color:var(--muted); padding:2px 0;
+  font-family:'Noto Sans KR',sans-serif;
+}
+
+.cal-grid {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:2px;
+}
+.cal-day {
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  font-size:12px; border-radius:3px; cursor:pointer;
+  color:var(--cream); transition:all .12s; font-family:'Noto Sans KR',sans-serif;
+  font-weight:300;
+}
+.cal-day:hover { background:rgba(201,169,110,.15); color:var(--gold); }
+.cal-day.other-month { color:var(--border); cursor:default; }
+.cal-day.other-month:hover { background:transparent; color:var(--border); }
+.cal-day.today { color:var(--amber); font-weight:500; }
+.cal-day.selected {
+  background:var(--gold); color:var(--bg); font-weight:500;
+  box-shadow:0 2px 8px rgba(201,169,110,.3);
+}
+.cal-day.selected:hover { background:var(--gold2,#e8c98a); }
+.cal-day.sun { color:#e85d4a; }
+.cal-day.sun.other-month { color:rgba(232,93,74,.2); }
+.cal-day.selected.sun { color:var(--bg); }
+
+.cal-today-btn {
+  width:100%; margin-top:10px; padding:5px;
+  background:transparent; border:1px solid var(--border);
+  color:var(--muted); font-size:11px; font-family:'Noto Sans KR',sans-serif;
+  border-radius:3px; cursor:pointer; transition:all .15s; letter-spacing:.5px;
+}
+.cal-today-btn:hover { border-color:var(--gold); color:var(--gold); }
 .modal-footer { display:flex; gap:8px; justify-content:space-between; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); align-items:center; }
 .footer-right { display:flex; gap:8px; }
 .btn-danger {
@@ -558,7 +637,25 @@ h1 em { font-style:italic; color:var(--gold); }
       <span class="modal-label">공연 이력</span>
       <div class="perf-list" id="perfList"></div>
       <div class="add-perf">
-        <input class="mini-input" type="date" id="perfDate">
+        <div class="date-picker-wrap">
+          <button type="button" class="date-trigger" id="perfDateTrigger" onclick="toggleCal()">
+            <span class="dt-icon">📅</span>
+            <span class="dt-val" id="perfDateDisplay">날짜 선택</span>
+          </button>
+          <div class="cal-popup" id="calPopup">
+            <div class="cal-nav">
+              <button class="cal-nav-btn" onclick="calMove(-1)">‹</button>
+              <span class="cal-month-label" id="calMonthLabel"></span>
+              <button class="cal-nav-btn" onclick="calMove(1)">›</button>
+            </div>
+            <div class="cal-dow">
+              <span>일</span><span>월</span><span>화</span><span>수</span>
+              <span>목</span><span>금</span><span>토</span>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+            <button class="cal-today-btn" onclick="calSelectToday()">오늘</button>
+          </div>
+        </div>
         <input class="mini-input" type="text" id="perfVenue" placeholder="공연장 / 행사명">
         <button class="btn-add" onclick="addPerformance()">추가</button>
       </div>
@@ -896,7 +993,7 @@ function openModal(title,catName) {
   });
   renderPerfList();
   document.getElementById('memoInput').value=d.memo||'';
-  document.getElementById('perfDate').value=new Date().toISOString().split('T')[0];
+  calInitToday();  // 달력을 오늘 날짜로 초기화
   document.getElementById('perfVenue').value='';
   document.getElementById('modal').classList.add('open');
 }
@@ -911,10 +1008,11 @@ function renderPerfList() {
   });
 }
 function addPerformance() {
-  const date=document.getElementById('perfDate').value;
+  const date=calSelectedDate;  // 달력에서 선택된 날짜
   const venue=document.getElementById('perfVenue').value.trim();
-  if(!date)return;
-  tempPerformances.push({date,venue});renderPerfList();document.getElementById('perfVenue').value='';
+  if(!date){showToast('날짜를 먼저 선택해주세요');return;}
+  tempPerformances.push({date,venue});renderPerfList();
+  document.getElementById('perfVenue').value='';
 }
 function delPerf(idx) {
   const sorted=[...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -1015,6 +1113,126 @@ function handleFileImport(e){
   };
   reader.readAsText(file);e.target.value='';
 }
+
+/* ══════════════ CALENDAR PICKER ══════════════ */
+let calYear, calMonth, calSelectedDate = null;
+
+function calToYMD(date) {
+  // date: Date → "YYYY-MM-DD"
+  return date.toLocaleDateString('sv-SE'); // sv-SE gives ISO format natively
+}
+
+function calInitToday() {
+  const t = new Date();
+  calYear = t.getFullYear();
+  calMonth = t.getMonth();
+  calSelectedDate = calToYMD(t);
+  calUpdateDisplay();
+  calRender();
+  closeCal();
+}
+
+function calUpdateDisplay() {
+  const disp = document.getElementById('perfDateDisplay');
+  if (!disp) return;
+  if (calSelectedDate) {
+    const d = new Date(calSelectedDate + 'T00:00:00');
+    const days = ['일','월','화','수','목','금','토'];
+    disp.textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} (${days[d.getDay()]})`;
+  } else {
+    disp.textContent = '날짜 선택';
+  }
+}
+
+function calRender() {
+  const label = document.getElementById('calMonthLabel');
+  const grid  = document.getElementById('calGrid');
+  if (!label || !grid) return;
+
+  label.textContent = `${calYear}년 ${calMonth+1}월`;
+  grid.innerHTML = '';
+
+  const today = calToYMD(new Date());
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const lastDate  = new Date(calYear, calMonth+1, 0).getDate();
+  const prevLast  = new Date(calYear, calMonth, 0).getDate();
+
+  // 이전 달 빈 칸
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = document.createElement('div');
+    d.className = 'cal-day other-month';
+    d.textContent = prevLast - i;
+    grid.appendChild(d);
+  }
+
+  // 이번 달
+  for (let day = 1; day <= lastDate; day++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dow = new Date(calYear, calMonth, day).getDay();
+    const d = document.createElement('div');
+    let cls = 'cal-day';
+    if (dow === 0) cls += ' sun';
+    if (dateStr === today) cls += ' today';
+    if (dateStr === calSelectedDate) cls += ' selected';
+    d.className = cls;
+    d.textContent = day;
+    d.onclick = () => calSelectDate(dateStr);
+    grid.appendChild(d);
+  }
+
+  // 다음 달 빈 칸 (6주 고정)
+  const total = firstDay + lastDate;
+  const nextCount = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= nextCount; i++) {
+    const d = document.createElement('div');
+    d.className = 'cal-day other-month';
+    d.textContent = i;
+    grid.appendChild(d);
+  }
+}
+
+function calSelectDate(dateStr) {
+  calSelectedDate = dateStr;
+  calUpdateDisplay();
+  calRender();
+  closeCal();
+}
+
+function calSelectToday() {
+  const t = new Date();
+  calYear = t.getFullYear();
+  calMonth = t.getMonth();
+  calSelectDate(calToYMD(t));
+}
+
+function calMove(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  calRender();
+}
+
+function toggleCal() {
+  const popup = document.getElementById('calPopup');
+  const trigger = document.getElementById('perfDateTrigger');
+  if (!popup) return;
+  const isOpen = popup.classList.toggle('open');
+  trigger.classList.toggle('open', isOpen);
+  if (isOpen) calRender();
+}
+
+function closeCal() {
+  const popup = document.getElementById('calPopup');
+  const trigger = document.getElementById('perfDateTrigger');
+  if (popup) popup.classList.remove('open');
+  if (trigger) trigger.classList.remove('open');
+}
+
+// 달력 외부 클릭 시 닫기
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.date-picker-wrap');
+  if (wrap && !wrap.contains(e.target)) closeCal();
+});
 
 /* ══════════════ PRINT ══════════════ */
 function printView() {
