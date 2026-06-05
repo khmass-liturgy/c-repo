@@ -1,1 +1,1132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classical Guitar Repertory</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   SCREEN STYLES
+══════════════════════════════════════════ */
+:root {
+  --bg:#0e0c0a; --bg2:#161310; --bg3:#1e1a16;
+  --gold:#c9a96e; --amber:#d4833a;
+  --cream:#f0e8d8; --muted:#7a6e5f; --border:#2e2720;
+  --red:#e85d4a; --orange:#d4833a; --green:#7cb87a;
+}
 
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background:var(--bg); color:var(--cream);
+  font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  font-size:15.5px; min-height:100vh; overflow-x:hidden;
+}
+
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%,rgba(201,169,110,.04) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 90%,rgba(212,131,58,.03) 0%,transparent 60%);
+}
+
+.app { position:relative; z-index:1; max-width:980px; margin:0 auto; padding:0 20px 60px; }
+
+/* ── HEADER ── */
+header { padding:44px 0 36px; border-bottom:1px solid var(--border); margin-bottom:28px; }
+.header-top { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; }
+.header-label { font-size:11px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); margin-bottom:10px; }
+h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(32px,6vw,52px); font-weight:300; line-height:1.1; }
+h1 em { font-style:italic; color:var(--gold); }
+.header-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.hdr-btn {
+  padding:7px 14px; border-radius:2px; font-size:11px; letter-spacing:.5px;
+  font-family:'Noto Sans KR',sans-serif; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; gap:5px; white-space:nowrap;
+}
+.hdr-btn-ghost { border:1px solid var(--border); background:transparent; color:var(--muted); }
+.hdr-btn-ghost:hover { border-color:var(--muted); color:var(--cream); }
+.hdr-btn-gold { border:1px solid var(--gold); background:rgba(201,169,110,.08); color:var(--gold); }
+.hdr-btn-gold:hover { background:rgba(201,169,110,.18); }
+.hdr-btn-print { border:1px solid rgba(124,184,122,.4); background:rgba(124,184,122,.06); color:var(--green); }
+.hdr-btn-print:hover { background:rgba(124,184,122,.15); }
+
+.header-stats { display:flex; gap:28px; margin-top:20px; flex-wrap:wrap; }
+.stat { display:flex; flex-direction:column; gap:2px; }
+.stat-num { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:300; color:var(--gold); line-height:1; }
+.stat-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+
+/* ── CONTROLS ── */
+.controls { display:flex; gap:10px; margin-bottom:26px; flex-wrap:wrap; align-items:center; }
+.filter-btn {
+  padding:6px 15px; border:1px solid var(--border); background:transparent;
+  color:var(--muted); font-family:'Noto Sans KR',sans-serif; font-size:12px;
+  letter-spacing:1px; cursor:pointer; transition:all .2s; border-radius:2px;
+}
+.filter-btn:hover,.filter-btn.active { border-color:var(--gold); color:var(--gold); }
+.filter-btn.active { background:rgba(201,169,110,.08); }
+.btn-add-piece {
+  padding:6px 14px; border:1px solid var(--gold); background:rgba(201,169,110,.08);
+  color:var(--gold); font-family:'Noto Sans KR',sans-serif; font-size:12px;
+  cursor:pointer; transition:all .2s; border-radius:2px;
+}
+.btn-add-piece:hover { background:rgba(201,169,110,.18); }
+.search-wrap { margin-left:auto; position:relative; }
+.search-input {
+  background:var(--bg2); border:1px solid var(--border); color:var(--cream);
+  padding:7px 14px 7px 32px; font-size:13px; font-family:'Noto Sans KR',sans-serif;
+  font-weight:300; outline:none; border-radius:2px; width:190px; transition:border-color .2s;
+}
+.search-input:focus { border-color:var(--gold); }
+.search-input::placeholder { color:var(--muted); }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:13px; pointer-events:none; }
+
+/* ── CATEGORY ── */
+.category-section { margin-bottom:8px; border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.category-header {
+  display:flex; align-items:center; gap:12px; padding:13px 18px;
+  background:var(--bg2); user-select:none; transition:background .2s;
+}
+.category-header:hover { background:var(--bg3); }
+.cat-click-area { display:flex; align-items:center; gap:12px; flex:1; cursor:pointer; }
+.cat-icon { font-size:15px; width:22px; text-align:center; }
+.cat-name { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:400; letter-spacing:.5px; color:var(--cream); }
+.cat-count { font-size:11px; color:var(--muted); letter-spacing:1px; }
+.cat-actions { display:flex; gap:6px; align-items:center; }
+.cat-action-btn {
+  width:24px; height:24px; border:1px solid var(--border); background:transparent;
+  color:var(--muted); border-radius:50%; cursor:pointer; font-size:12px;
+  display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0;
+}
+.cat-action-btn:hover { border-color:var(--gold); color:var(--gold); }
+.cat-action-btn.del:hover { border-color:var(--red); color:var(--red); }
+.cat-chevron { color:var(--muted); font-size:10px; transition:transform .3s; cursor:pointer; }
+.category-section.collapsed .cat-chevron { transform:rotate(-90deg); }
+.category-body { display:grid; grid-template-rows:1fr; transition:grid-template-rows .3s ease; }
+.category-section.collapsed .category-body { grid-template-rows:0fr; }
+.category-body-inner { overflow:hidden; }
+.piece-list { padding:4px 0 8px; }
+
+/* ── PIECE ROW ── */
+.piece-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 18px 11px 46px;
+  border-bottom:1px solid rgba(46,39,32,.5);
+  transition:background .15s; cursor:pointer; position:relative;
+}
+.piece-item:last-child { border-bottom:none; }
+.piece-item:hover { background:rgba(201,169,110,.04); }
+.piece-item:hover .piece-del-btn { opacity:1; }
+.piece-info { flex:1; display:flex; align-items:baseline; gap:10px; min-width:0; }
+.piece-title { font-size:15.5px; font-weight:300; color:var(--cream); letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.piece-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:17px; }
+.piece-composer { font-size:12px; color:var(--muted); white-space:nowrap; font-family:'Cormorant Garamond',serif; font-style:italic; flex-shrink:0; }
+.status-badge {
+  font-size:10px; letter-spacing:1.5px; padding:3px 9px; border-radius:2px;
+  font-weight:400; white-space:nowrap; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  transition:opacity .2s;
+}
+.status-badge:hover { opacity:.7; }
+.status-암보    { background:rgba(232,93,74,.15);  color:var(--red);   border:1px solid rgba(232,93,74,.25); }
+.status-연습중  { background:rgba(212,131,58,.15); color:var(--orange);border:1px solid rgba(212,131,58,.25); }
+.status-완성    { background:rgba(124,184,122,.15);color:var(--green); border:1px solid rgba(124,184,122,.25); }
+.status-공연가능{ background:rgba(201,169,110,.15);color:var(--gold);  border:1px solid rgba(201,169,110,.25); }
+.last-played { font-size:11px; color:var(--muted); white-space:nowrap; min-width:72px; text-align:right; }
+.last-played.danger  { color:var(--red); }
+.last-played.warning { color:var(--orange); }
+.record-btn {
+  width:24px; height:24px; border:1px solid var(--border); background:transparent;
+  color:var(--muted); border-radius:50%; cursor:pointer; font-size:9px;
+  display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0;
+}
+.record-btn:hover { border-color:var(--gold); color:var(--gold); }
+.piece-del-btn {
+  width:20px; height:20px; border:1px solid transparent; background:transparent;
+  color:var(--muted); border-radius:50%; cursor:pointer; font-size:11px;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:all .15s; flex-shrink:0;
+}
+.piece-del-btn:hover { border-color:var(--red); color:var(--red); opacity:1!important; }
+
+/* ── MODALS ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(10,8,6,.85); backdrop-filter:blur(4px);
+  z-index:100; display:flex; align-items:center; justify-content:center; padding:20px;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  padding:30px 32px; width:100%; max-width:500px; max-height:90vh;
+  overflow-y:auto; transform:translateY(8px); transition:transform .2s;
+}
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal-title { font-family:'Cormorant Garamond',serif; font-size:23px; font-style:italic; color:var(--gold); margin-bottom:20px; }
+.modal-section { margin-bottom:18px; }
+.modal-label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; display:block; }
+.status-options { display:flex; gap:8px; flex-wrap:wrap; }
+.status-opt {
+  padding:6px 14px; border-radius:2px; font-size:12px; letter-spacing:1px;
+  cursor:pointer; transition:all .2s; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-family:'Noto Sans KR',sans-serif;
+}
+.status-opt.sel-암보    { background:rgba(232,93,74,.2);  color:var(--red);   border-color:var(--red); }
+.status-opt.sel-연습중  { background:rgba(212,131,58,.2); color:var(--orange);border-color:var(--orange); }
+.status-opt.sel-완성    { background:rgba(124,184,122,.2);color:var(--green); border-color:var(--green); }
+.status-opt.sel-공연가능{ background:rgba(201,169,110,.2);color:var(--gold);  border-color:var(--gold); }
+.perf-list { display:flex; flex-direction:column; gap:6px; }
+.perf-item { display:flex; gap:10px; align-items:center; padding:8px 12px; background:var(--bg); border-radius:3px; border:1px solid var(--border); font-size:13px; }
+.perf-date  { color:var(--gold); font-family:'Cormorant Garamond',serif; font-size:15px; }
+.perf-venue { flex:1; color:var(--muted); }
+.perf-del   { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0 2px; transition:color .2s; }
+.perf-del:hover { color:var(--red); }
+.add-perf { display:flex; gap:8px; margin-top:8px; }
+.mini-input {
+  background:var(--bg); border:1px solid var(--border); color:var(--cream);
+  padding:7px 10px; font-size:13px; font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  outline:none; border-radius:2px; flex:1; transition:border-color .2s;
+}
+.mini-input:focus { border-color:var(--gold); }
+.mini-input::placeholder { color:var(--muted); }
+.btn-add {
+  padding:7px 14px; background:rgba(201,169,110,.1); border:1px solid var(--gold);
+  color:var(--gold); font-size:12px; cursor:pointer; border-radius:2px;
+  font-family:'Noto Sans KR',sans-serif; transition:background .2s; white-space:nowrap;
+}
+.btn-add:hover { background:rgba(201,169,110,.2); }
+.memo-input {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--cream);
+  padding:10px 12px; font-size:13px; font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  outline:none; border-radius:2px; resize:vertical; min-height:68px; transition:border-color .2s;
+}
+.memo-input:focus { border-color:var(--gold); }
+.modal-footer { display:flex; gap:8px; justify-content:space-between; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); align-items:center; }
+.footer-right { display:flex; gap:8px; }
+.btn-danger {
+  padding:8px 14px; background:transparent; border:1px solid rgba(232,93,74,.3);
+  color:var(--red); font-size:12px; cursor:pointer; border-radius:2px;
+  font-family:'Noto Sans KR',sans-serif; transition:all .2s; opacity:.7;
+}
+.btn-danger:hover { opacity:1; background:rgba(232,93,74,.08); }
+.btn-ghost {
+  padding:8px 18px; background:transparent; border:1px solid var(--border);
+  color:var(--muted); font-size:13px; cursor:pointer; border-radius:2px;
+  font-family:'Noto Sans KR',sans-serif; transition:all .2s;
+}
+.btn-ghost:hover { border-color:var(--muted); color:var(--cream); }
+.btn-primary {
+  padding:8px 20px; background:rgba(201,169,110,.1); border:1px solid var(--gold);
+  color:var(--gold); font-size:13px; cursor:pointer; border-radius:2px;
+  font-family:'Noto Sans KR',sans-serif; transition:background .2s;
+}
+.btn-primary:hover { background:rgba(201,169,110,.2); }
+
+/* ── FORM ELEMENTS (shared) ── */
+.form-row { margin-bottom:14px; }
+.form-label { display:block; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.form-input {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--cream);
+  padding:9px 12px; font-size:14px; font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  outline:none; border-radius:2px; transition:border-color .2s;
+}
+.form-input:focus { border-color:var(--gold); }
+.form-input::placeholder { color:var(--muted); }
+.form-input.error { border-color:var(--red); }
+.form-select {
+  width:100%; background:var(--bg); border:1px solid var(--border); color:var(--cream);
+  padding:9px 12px; font-size:14px; font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  outline:none; border-radius:2px; cursor:pointer; appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a6e5f'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; transition:border-color .2s;
+}
+.form-select:focus { border-color:var(--gold); }
+.form-select option { background:var(--bg2); }
+.icon-input-row { display:flex; gap:8px; }
+.icon-preview {
+  width:44px; height:44px; border:1px solid var(--border); border-radius:3px;
+  background:var(--bg); display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+
+/* ── TABS ── */
+.tab-bar { display:flex; margin-bottom:26px; border-bottom:1px solid var(--border); }
+.tab-btn {
+  padding:10px 20px; background:none; border:none; color:var(--muted);
+  font-size:13px; letter-spacing:1px; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  position:relative; transition:color .2s;
+}
+.tab-btn::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:1px; background:var(--gold); transform:scaleX(0); transition:transform .2s; }
+.tab-btn.active { color:var(--gold); }
+.tab-btn.active::after { transform:scaleX(1); }
+
+/* ── VIEWS ── */
+.perf-timeline  { display:none; }
+.perf-timeline.active  { display:block; }
+.repertory-view { display:none; }
+.repertory-view.active { display:block; }
+
+/* ── TIMELINE ── */
+.timeline-item { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--border); }
+.tl-date { font-family:'Cormorant Garamond',serif; font-size:20px; color:var(--gold); min-width:80px; line-height:1.2; }
+.tl-day { font-size:12px; color:var(--muted); margin-top:2px; }
+.tl-content { flex:1; }
+.tl-venue { font-size:14px; color:var(--cream); margin-bottom:6px; }
+.tl-pieces { display:flex; flex-wrap:wrap; gap:6px; }
+.tl-piece { padding:3px 10px; border:1px solid var(--border); border-radius:2px; color:var(--muted); font-family:'Cormorant Garamond',serif; font-style:italic; font-size:14px; }
+
+/* ── MISC ── */
+.empty-state { text-align:center; padding:60px 20px; color:var(--muted); font-size:14px; letter-spacing:1px; line-height:1.8; }
+.practice-banner {
+  background:rgba(232,93,74,.08); border:1px solid rgba(232,93,74,.2); border-radius:4px;
+  padding:12px 16px; margin-bottom:22px; display:flex; align-items:center; gap:12px;
+  font-size:13px; color:var(--cream);
+}
+.banner-text { flex:1; line-height:1.5; }
+.banner-pieces { color:var(--amber); font-style:italic; font-family:'Cormorant Garamond',serif; font-size:15px; }
+
+/* ── CONFIRM ── */
+.confirm-overlay {
+  position:fixed; inset:0; background:rgba(10,8,6,.7); z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  opacity:0; pointer-events:none; transition:opacity .15s;
+}
+.confirm-overlay.open { opacity:1; pointer-events:all; }
+.confirm-box {
+  background:var(--bg2); border:1px solid var(--border); border-radius:6px;
+  padding:28px 32px; max-width:360px; width:100%;
+  transform:translateY(6px); transition:transform .15s;
+}
+.confirm-overlay.open .confirm-box { transform:translateY(0); }
+.confirm-msg { font-size:14px; color:var(--cream); line-height:1.7; margin-bottom:20px; }
+.confirm-msg strong { color:var(--gold); font-style:italic; font-family:'Cormorant Garamond',serif; font-size:16px; font-weight:400; }
+.confirm-btns { display:flex; gap:8px; justify-content:flex-end; }
+
+/* ── EDIT TITLE inline ── */
+.modal-title-edit {
+  display:flex; align-items:center; gap:8px; margin-bottom:8px;
+}
+.modal-title-input {
+  font-family:'Cormorant Garamond',serif; font-size:22px; font-style:italic; color:var(--gold);
+  background:var(--bg); border:1px solid var(--border); border-radius:3px;
+  padding:4px 10px; outline:none; flex:1; width:100%; transition:border-color .2s;
+}
+.modal-title-input:focus { border-color:var(--gold); }
+.modal-composer-input {
+  background:var(--bg); border:1px solid var(--border); color:var(--muted); border-radius:3px;
+  padding:4px 10px; font-size:13px; font-family:'Cormorant Garamond',serif; font-style:italic;
+  outline:none; width:100%; transition:border-color .2s; margin-bottom:6px;
+}
+.modal-composer-input:focus { border-color:var(--gold); }
+.modal-cat-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:20px; display:block; }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(10px);
+  background:var(--bg3); border:1px solid var(--border); border-radius:4px;
+  padding:10px 20px; font-size:13px; color:var(--cream); z-index:500;
+  opacity:0; transition:all .25s; pointer-events:none; white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════════
+   PRINT STYLES  — A4 한 장
+══════════════════════════════════════════ */
+@media print {
+  @page { size:A4 portrait; margin:14mm 16mm 14mm 16mm; }
+
+  body {
+    background:#fff !important; color:#1a1a1a !important;
+    font-family:'Noto Sans KR',sans-serif; font-size:8.5pt;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* 화면 UI 요소 숨김 */
+  body::before, .header-actions, .controls, .tab-bar,
+  .practice-banner, .cat-actions, .record-btn, .piece-del-btn,
+  .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast,
+  #performancesView { display:none !important; }
+
+  .app { max-width:100%; padding:0; }
+
+  header {
+    padding:0 0 8pt; border-bottom:1.5pt solid #1a1a1a; margin-bottom:10pt;
+  }
+
+  .header-label { font-size:6.5pt; letter-spacing:3px; color:#888; margin-bottom:4pt; }
+
+  h1 {
+    font-family:'Cormorant Garamond',serif; font-size:22pt; font-weight:300;
+    color:#1a1a1a !important; line-height:1.1;
+  }
+  h1 em { color:#8a6d3e !important; }
+
+  .header-stats { gap:18pt; margin-top:6pt; }
+  .stat-num { font-size:16pt; color:#8a6d3e !important; }
+  .stat-label { font-size:5.5pt; color:#888; }
+
+  /* 레퍼토리 뷰만 표시 */
+  .repertory-view { display:block !important; }
+  .perf-timeline  { display:none !important; }
+
+  /* 카테고리 모두 펼침 */
+  .category-section { border:none; margin-bottom:0; page-break-inside:avoid; }
+  .category-section.collapsed .category-body { grid-template-rows:1fr !important; }
+
+  .category-header {
+    background:transparent !important; padding:5pt 0 3pt;
+    border-bottom:0.5pt solid #ccc;
+  }
+  .cat-click-area { cursor:default; }
+  .cat-icon { font-size:10pt; }
+  .cat-name { font-family:'Cormorant Garamond',serif; font-size:11pt; color:#1a1a1a !important; letter-spacing:.3px; }
+  .cat-count { font-size:7pt; color:#888; }
+  .cat-chevron { display:none; }
+
+  .piece-list { padding:2pt 0 4pt; }
+
+  .piece-item {
+    padding:2.5pt 0 2.5pt 14pt; gap:6pt; border-bottom:0.3pt solid #e8e0d4;
+    cursor:default; background:transparent !important;
+  }
+  .piece-item:last-child { border-bottom:none; }
+
+  .piece-info { gap:6pt; }
+  .piece-title { font-size:8.5pt; color:#1a1a1a !important; white-space:normal; font-weight:400; }
+  .piece-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:9.5pt; }
+  .piece-composer { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:7.5pt; color:#888; }
+
+  /* 인쇄용 상태 도트 */
+  .piece-item::before {
+    content:attr(data-status-dot);
+    width:5pt; height:5pt; border-radius:50%;
+    display:inline-block; flex-shrink:0;
+    background:var(--print-dot-color, #ccc);
+    position:absolute; left:4pt; top:50%; transform:translateY(-50%);
+  }
+
+  /* 인쇄 범례 */
+  .print-legend {
+    display:flex !important;
+    gap:14pt; margin-top:10pt; padding-top:6pt;
+    border-top:0.5pt solid #ccc; font-size:7pt; color:#555;
+    align-items:center; flex-wrap:wrap;
+  }
+  .print-legend-dot {
+    width:6pt; height:6pt; border-radius:50%; display:inline-block; margin-right:3pt;
+  }
+  .print-legend-item { display:flex; align-items:center; }
+  .print-footer { display:flex !important; justify-content:space-between; margin-top:8pt; font-size:6.5pt; color:#aaa; border-top:0.5pt solid #e0d8cc; padding-top:5pt; }
+}
+
+@media screen {
+  .print-legend, .print-footer { display:none; }
+}
+
+@media (max-width:600px) {
+  .search-wrap { margin-left:0; width:100%; }
+  .search-input { width:100%; }
+  .header-stats { gap:18px; }
+  .piece-item { padding-left:18px; }
+  .piece-composer { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="header-label">Classical Guitar</div>
+        <h1>나의 <em>레퍼토리</em></h1>
+      </div>
+      <div class="header-actions">
+        <button class="hdr-btn hdr-btn-ghost" onclick="openAddCatModal()">＋ 카테고리</button>
+        <button class="hdr-btn hdr-btn-ghost" onclick="importJSON()">📂 불러오기</button>
+        <button class="hdr-btn hdr-btn-ghost" onclick="exportJSON()">💾 내보내기</button>
+        <button class="hdr-btn hdr-btn-print" onclick="printView()">🖨 인쇄 (PDF)</button>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat"><span class="stat-num" id="totalCount">0</span><span class="stat-label">Total</span></div>
+      <div class="stat"><span class="stat-num" id="readyCount">0</span><span class="stat-label">공연가능</span></div>
+      <div class="stat"><span class="stat-num" id="practiceCount">0</span><span class="stat-label">연습중</span></div>
+      <div class="stat"><span class="stat-num" id="perfCount">0</span><span class="stat-label">공연이력</span></div>
+    </div>
+  </header>
+
+  <div id="practiceBanner" class="practice-banner" style="display:none">
+    <span style="font-size:16px">⚠</span>
+    <div class="banner-text">
+      오래 연주하지 않은 곡이 있어요:<br>
+      <span class="banner-pieces" id="bannerPieces"></span>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('repertory')">레퍼토리</button>
+    <button class="tab-btn" onclick="switchTab('performances')">공연 이력</button>
+  </div>
+
+  <div id="repertoryView" class="repertory-view active">
+    <div class="controls">
+      <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
+      <button class="filter-btn" onclick="setFilter('암보',this)">암보</button>
+      <button class="filter-btn" onclick="setFilter('연습중',this)">연습중</button>
+      <button class="filter-btn" onclick="setFilter('완성',this)">완성</button>
+      <button class="filter-btn" onclick="setFilter('공연가능',this)">공연가능</button>
+      <button class="btn-add-piece" onclick="openAddPieceModal(null)">＋ 곡 추가</button>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" type="text" placeholder="곡 / 작곡자 검색..." oninput="doSearch(this.value)">
+      </div>
+    </div>
+    <div id="categoriesContainer"></div>
+  </div>
+
+  <div id="performancesView" class="perf-timeline">
+    <div id="timelineContainer"></div>
+  </div>
+
+  <!-- 인쇄 전용 요소 -->
+  <div class="print-legend" id="printLegend">
+    <span class="print-legend-item"><span class="print-legend-dot" style="background:#e85d4a"></span>암보</span>
+    <span class="print-legend-item"><span class="print-legend-dot" style="background:#d4833a"></span>연습중</span>
+    <span class="print-legend-item"><span class="print-legend-dot" style="background:#7cb87a"></span>완성</span>
+    <span class="print-legend-item"><span class="print-legend-dot" style="background:#c9a96e"></span>공연가능</span>
+  </div>
+  <div class="print-footer" id="printFooter">
+    <span id="printDate"></span>
+    <span>Classical Guitar Repertory</span>
+  </div>
+</div>
+
+<!-- ══ 곡 상세/편집 모달 ══ -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <!-- 인라인 편집 가능 제목/작곡자 -->
+    <div class="modal-title-edit">
+      <input class="modal-title-input" id="editTitle" type="text" placeholder="곡명">
+    </div>
+    <input class="modal-composer-input" id="editComposer" type="text" placeholder="작곡자 (선택)">
+    <span class="modal-cat-label" id="modalCat"></span>
+
+    <div class="modal-section">
+      <span class="modal-label">연주 완성도</span>
+      <div class="status-options" id="statusOptions"></div>
+    </div>
+
+    <div class="modal-section">
+      <span class="modal-label">공연 이력</span>
+      <div class="perf-list" id="perfList"></div>
+      <div class="add-perf">
+        <input class="mini-input" type="date" id="perfDate">
+        <input class="mini-input" type="text" id="perfVenue" placeholder="공연장 / 행사명">
+        <button class="btn-add" onclick="addPerformance()">추가</button>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <span class="modal-label">메모</span>
+      <textarea class="memo-input" id="memoInput" placeholder="연습 포인트, 특이사항 등..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-danger" onclick="confirmDeletePiece()">곡 삭제</button>
+      <div class="footer-right">
+        <button class="btn-ghost" onclick="closeModal()">닫기</button>
+        <button class="btn-primary" onclick="saveModal()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 곡 추가 모달 ══ -->
+<div class="modal-overlay" id="addPieceModal" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" style="margin-bottom:18px">새 곡 추가</div>
+    <div class="form-row">
+      <label class="form-label">곡명 *</label>
+      <input class="form-input" id="newPieceTitle" type="text" placeholder="곡명을 입력하세요">
+    </div>
+    <div class="form-row">
+      <label class="form-label">작곡자</label>
+      <input class="form-input" id="newPieceComposer" type="text" placeholder="작곡자 이름">
+    </div>
+    <div class="form-row">
+      <label class="form-label">카테고리 *</label>
+      <select class="form-select" id="newPieceCat"></select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">초기 완성도</label>
+      <select class="form-select" id="newPieceStatus">
+        <option value="암보">암보</option>
+        <option value="연습중">연습중</option>
+        <option value="완성">완성</option>
+        <option value="공연가능">공연가능</option>
+      </select>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <div></div>
+      <div class="footer-right">
+        <button class="btn-ghost" onclick="closeAddModal()">취소</button>
+        <button class="btn-primary" onclick="saveNewPiece()">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 카테고리 추가 모달 ══ -->
+<div class="modal-overlay" id="addCatModal" onclick="if(event.target===this)closeAddCatModal()">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title" style="margin-bottom:18px">카테고리 추가</div>
+    <div class="form-row">
+      <label class="form-label">카테고리 이름 *</label>
+      <input class="form-input" id="newCatName" type="text" placeholder="예: 바로크, 현대음악...">
+    </div>
+    <div class="form-row">
+      <label class="form-label">아이콘 (이모지)</label>
+      <div class="icon-input-row">
+        <div class="icon-preview" id="iconPreview">🎼</div>
+        <input class="form-input" id="newCatIcon" type="text" placeholder="이모지 입력 (예: 🎼 🌙 ✨)" maxlength="4" oninput="updateIconPreview(this.value)" value="🎼">
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <div></div>
+      <div class="footer-right">
+        <button class="btn-ghost" onclick="closeAddCatModal()">취소</button>
+        <button class="btn-primary" onclick="saveNewCat()">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 확인 ══ -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="btn-ghost" onclick="closeConfirm()">취소</button>
+      <button class="btn-danger" style="opacity:1" onclick="execConfirm()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- 숨긴 파일 input -->
+<input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileImport(event)">
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════ INITIAL DATA ══════════════ */
+const INITIAL_CATEGORIES = [
+  { id:'bach',    name:'Bach',           icon:'𝄞',
+    pieces:[{ title:'Prelude BWV 998', composer:'J.S. Bach' }] },
+  { id:'lyric',   name:'서정곡',          icon:'♪',
+    pieces:[
+      { title:'Love Waltz', composer:'' },
+      { title:'Liebeslied', composer:'Kreisler' },
+      { title:'Verde Alma', composer:'' },
+      { title:'Melodia Noite', composer:'' },
+      { title:'El Delirio', composer:'' },
+      { title:"Testament d'Amelia", composer:'' },
+    ]},
+  { id:'film',    name:'영화음악',        icon:'🎬',
+    pieces:[
+      { title:'카바티나', composer:'Myers' },
+      { title:'Romance', composer:'' },
+      { title:'My Way / Love Story', composer:'' },
+      { title:'Over the Rainbow', composer:'Arlen' },
+      { title:'Moon River', composer:'Mancini' },
+      { title:'씨네마 천국', composer:'Morricone' },
+    ]},
+  { id:'tarrega', name:'타레가',          icon:'🌹',
+    pieces:[
+      { title:'타레가 로망스', composer:'Tárrega' },
+      { title:'La Lágrima', composer:'Tárrega' },
+      { title:'Adelita', composer:'Tárrega' },
+      { title:'Marieta', composer:'Tárrega' },
+      { title:'Recuerdos de la Alhambra', composer:'Tárrega' },
+    ]},
+  { id:'latin',   name:'남미',            icon:'🌿',
+    pieces:[
+      { title:'Se Ela Perguntar', composer:'Rômulo Jovino' },
+      { title:'Un Día de Noviembre', composer:'Leo Brouwer' },
+      { title:'La Negra', composer:'' },
+      { title:'Venezuelan Waltz 1·2·3', composer:'Lauro' },
+    ]},
+  { id:'barrios', name:'망고레 (Barrios)', icon:'✦',
+    pieces:[
+      { title:'Un Sueño en la Floresta', composer:'Barrios' },
+      { title:'Julia Florida', composer:'Barrios' },
+      { title:'La Catedral 1·2·3', composer:'Barrios' },
+      { title:'El Último Temblor', composer:'Barrios' },
+    ]},
+  { id:'spain',   name:'스페인',          icon:'🏛',
+    pieces:[
+      { title:'Asturias', composer:'Albéniz' },
+      { title:'Serenata Española', composer:'Malats' },
+      { title:'Sevilla', composer:'Albéniz' },
+    ]},
+  { id:'etc',     name:'기타',            icon:'🎸',
+    pieces:[
+      { title:'Wind Song', composer:'' },
+      { title:'Tango in Ski', composer:'' },
+      { title:'고향의 봄', composer:'' },
+    ]},
+];
+
+/* ══════════════ STATE ══════════════ */
+let categories, state;
+let currentFilter = 'all', currentSearch = '';
+let editingPiece = null, tempPerformances = [];
+let confirmCallback = null;
+
+function loadAll() {
+  try {
+    const saved = localStorage.getItem('guitar_repertory_v4');
+    if (saved) { const p = JSON.parse(saved); categories = p.categories; state = p.state; return; }
+  } catch(e) {}
+  categories = JSON.parse(JSON.stringify(INITIAL_CATEGORIES));
+  state = { pieces:{}, collapsed:{} };
+  categories.forEach(c => c.pieces.forEach(p => {
+    state.pieces[p.title] = { status:'암보', performances:[], memo:'', lastPlayed:null };
+  }));
+}
+
+function saveAll() {
+  try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({ categories, state })); } catch(e){}
+}
+
+function getPieceData(title) {
+  if (!state.pieces[title]) state.pieces[title] = { status:'암보', performances:[], memo:'', lastPlayed:null };
+  return state.pieces[title];
+}
+
+function getCatById(id) { return categories.find(c => c.id === id); }
+
+function getPieceMeta(title) {
+  for (const cat of categories) {
+    const p = cat.pieces.find(p => p.title === title);
+    if (p) return { ...p, catId:cat.id, catName:cat.name };
+  }
+  return null;
+}
+
+/* ══════════════ RENDER ══════════════ */
+function render() { renderStats(); renderPracticeBanner(); renderCategories(); }
+
+function renderStats() {
+  const all = Object.values(state.pieces);
+  document.getElementById('totalCount').textContent = all.length;
+  document.getElementById('readyCount').textContent = all.filter(p => p.status==='공연가능').length;
+  document.getElementById('practiceCount').textContent = all.filter(p => p.status==='연습중').length;
+  document.getElementById('perfCount').textContent = all.reduce((s,p) => s+(p.performances?.length||0),0);
+}
+
+function renderPracticeBanner() {
+  const stale = [];
+  Object.entries(state.pieces).forEach(([t,d]) => {
+    if ((d.status==='공연가능'||d.status==='완성') && d.lastPlayed) {
+      if ((Date.now()-new Date(d.lastPlayed).getTime()) > 14*86400000) stale.push(t);
+    }
+  });
+  const b = document.getElementById('practiceBanner');
+  b.style.display = stale.length ? 'flex' : 'none';
+  if (stale.length) document.getElementById('bannerPieces').textContent =
+    stale.slice(0,3).join(', ')+(stale.length>3?` 외 ${stale.length-3}곡`:'');
+}
+
+const STATUS_DOT = { '암보':'#e85d4a','연습중':'#d4833a','완성':'#7cb87a','공연가능':'#c9a96e' };
+
+function renderCategories() {
+  const container = document.getElementById('categoriesContainer');
+  container.innerHTML = '';
+  let hasAny = false;
+
+  categories.forEach(cat => {
+    const filtered = cat.pieces.filter(p => {
+      const d = getPieceData(p.title);
+      const mf = currentFilter==='all' || d.status===currentFilter;
+      const ms = !currentSearch ||
+        p.title.toLowerCase().includes(currentSearch.toLowerCase()) ||
+        (p.composer||'').toLowerCase().includes(currentSearch.toLowerCase());
+      return mf && ms;
+    });
+    if (!filtered.length && (currentFilter!=='all' || currentSearch)) return;
+    hasAny = true;
+
+    const collapsed = state.collapsed[cat.id];
+    const sec = document.createElement('div');
+    sec.className = `category-section${collapsed?' collapsed':''}`;
+    sec.innerHTML = `
+      <div class="category-header">
+        <div class="cat-click-area" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">
+          <span class="cat-icon">${cat.icon}</span>
+          <span class="cat-name">${cat.name}</span>
+          <span class="cat-count">${filtered.length}곡</span>
+        </div>
+        <div class="cat-actions">
+          <button class="cat-action-btn" onclick="openAddPieceModal('${cat.id}')" title="이 카테고리에 곡 추가">＋</button>
+          <button class="cat-action-btn del" onclick="confirmDeleteCat('${cat.id}')" title="카테고리 삭제">✕</button>
+        </div>
+        <span class="cat-chevron" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">▼</span>
+      </div>
+      <div class="category-body"><div class="category-body-inner">
+        <div class="piece-list" id="list-${cat.id}"></div>
+      </div></div>`;
+    container.appendChild(sec);
+
+    const list = sec.querySelector(`#list-${cat.id}`);
+    (currentSearch||currentFilter!=='all'?filtered:cat.pieces).forEach(p => {
+      const d = getPieceData(p.title);
+      const isItalic = /[a-zA-Z]/.test(p.title[0]);
+      const lpStr = formatLastPlayed(d.lastPlayed);
+      const lpCls = getDangerClass(d.lastPlayed, d.status);
+      const dotColor = STATUS_DOT[d.status]||'#888';
+      const item = document.createElement('div');
+      item.className = 'piece-item';
+      item.dataset.statusDot = '';
+      item.style.setProperty('--print-dot-color', dotColor);
+      item.setAttribute('data-status-dot', '');
+      item.onclick = () => openModal(p.title, cat.name);
+      item.innerHTML = `
+        <div class="piece-info">
+          <span class="piece-title${isItalic?' italic':''}">${p.title}</span>
+          ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
+        </div>
+        <button class="status-badge status-${d.status}" onclick="cycleStatus(event,'${p.title}')">${d.status}</button>
+        <span class="last-played ${lpCls}">${lpStr}</span>
+        <button class="record-btn" onclick="quickPlay(event,'${p.title}')" title="오늘 연주">▶</button>
+        <button class="piece-del-btn" onclick="confirmDeletePieceInline(event,'${p.title}')" title="삭제">✕</button>`;
+      list.appendChild(item);
+    });
+  });
+
+  if (!hasAny) container.innerHTML = '<div class="empty-state">검색 결과가 없습니다</div>';
+}
+
+function formatLastPlayed(d) {
+  if (!d) return '기록없음';
+  const n = Math.floor((Date.now()-new Date(d).getTime())/86400000);
+  if (n===0) return '오늘'; if (n===1) return '어제';
+  if (n<7) return `${n}일 전`; if (n<30) return `${Math.floor(n/7)}주 전`;
+  if (n<365) return `${Math.floor(n/30)}개월 전`; return `${Math.floor(n/365)}년 전`;
+}
+
+function getDangerClass(d,s) {
+  if (!d||(s!=='완성'&&s!=='공연가능')) return '';
+  const n=Math.floor((Date.now()-new Date(d).getTime())/86400000);
+  return n>14?'danger':n>7?'warning':'';
+}
+
+function renderTimeline() {
+  const container = document.getElementById('timelineContainer');
+  const all=[];
+  Object.entries(state.pieces).forEach(([t,d]) =>
+    (d.performances||[]).forEach(p => all.push({date:p.date,venue:p.venue,title:t})));
+  if (!all.length) { container.innerHTML='<div class="empty-state">공연 이력이 없습니다.<br>각 곡을 클릭하여 기록해보세요.</div>'; return; }
+  const g={};
+  all.forEach(p => { const k=`${p.date}__${p.venue}`; if(!g[k]) g[k]={date:p.date,venue:p.venue,pieces:[]}; g[k].pieces.push(p.title); });
+  container.innerHTML='';
+  const days=['일','월','화','수','목','금','토'];
+  Object.values(g).sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(gr => {
+    const d=new Date(gr.date);
+    const el=document.createElement('div'); el.className='timeline-item';
+    el.innerHTML=`
+      <div>
+        <div class="tl-date">${d.getMonth()+1}/${d.getDate()}<br><small style="font-size:12px">${d.getFullYear()}</small></div>
+        <div class="tl-day">${days[d.getDay()]}요일</div>
+      </div>
+      <div class="tl-content">
+        <div class="tl-venue">${gr.venue||'공연'}</div>
+        <div class="tl-pieces">${gr.pieces.map(t=>`<span class="tl-piece">${t}</span>`).join('')}</div>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+/* ══════════════ INTERACTIONS ══════════════ */
+function toggleCat(id,el) { state.collapsed[id]=el.classList.toggle('collapsed'); saveAll(); }
+
+function setFilter(f,btn) {
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCategories();
+}
+
+function doSearch(val) { currentSearch=val; renderCategories(); }
+
+function cycleStatus(e,title) {
+  e.stopPropagation();
+  const order=['암보','연습중','완성','공연가능'];
+  const d=getPieceData(title);
+  d.status=order[(order.indexOf(d.status)+1)%order.length];
+  saveAll(); renderStats(); renderCategories();
+}
+
+function quickPlay(e,title) {
+  e.stopPropagation();
+  getPieceData(title).lastPlayed=new Date().toISOString().split('T')[0];
+  saveAll(); renderCategories(); renderPracticeBanner();
+}
+
+/* ══════════════ PIECE DETAIL MODAL ══════════════ */
+function openModal(title, catName) {
+  editingPiece = title;
+  const d = getPieceData(title);
+  const meta = getPieceMeta(title);
+  tempPerformances = JSON.parse(JSON.stringify(d.performances||[]));
+
+  document.getElementById('editTitle').value = title;
+  document.getElementById('editComposer').value = meta?.composer||'';
+  document.getElementById('modalCat').textContent = catName;
+
+  const opts=document.getElementById('statusOptions');
+  opts.innerHTML='';
+  ['암보','연습중','완성','공연가능'].forEach(s=>{
+    const b=document.createElement('button');
+    b.className=`status-opt${d.status===s?' sel-'+s:''}`;
+    b.textContent=s;
+    b.onclick=()=>{ opts.querySelectorAll('.status-opt').forEach(x=>x.className='status-opt'); b.className=`status-opt sel-${s}`; };
+    opts.appendChild(b);
+  });
+
+  renderPerfList();
+  document.getElementById('memoInput').value=d.memo||'';
+  document.getElementById('perfDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('perfVenue').value='';
+  document.getElementById('modal').classList.add('open');
+}
+
+function renderPerfList() {
+  const list=document.getElementById('perfList');
+  list.innerHTML='';
+  if (!tempPerformances.length) { list.innerHTML='<div style="font-size:13px;color:var(--muted);padding:4px 0">공연 기록이 없습니다</div>'; return; }
+  [...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach((p,i)=>{
+    const el=document.createElement('div'); el.className='perf-item';
+    el.innerHTML=`<span class="perf-date">${p.date}</span><span class="perf-venue">${p.venue||'-'}</span><button class="perf-del" onclick="delPerf(${i})">✕</button>`;
+    list.appendChild(el);
+  });
+}
+
+function addPerformance() {
+  const date=document.getElementById('perfDate').value;
+  const venue=document.getElementById('perfVenue').value.trim();
+  if (!date) return;
+  tempPerformances.push({date,venue}); renderPerfList();
+  document.getElementById('perfVenue').value='';
+}
+
+function delPerf(idx) {
+  const sorted=[...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const ri=tempPerformances.indexOf(sorted[idx]);
+  if (ri>-1) tempPerformances.splice(ri,1);
+  renderPerfList();
+}
+
+function saveModal() {
+  if (!editingPiece) return;
+  const newTitle = document.getElementById('editTitle').value.trim();
+  const newComposer = document.getElementById('editComposer').value.trim();
+
+  if (!newTitle) { document.getElementById('editTitle').classList.add('error'); return; }
+  document.getElementById('editTitle').classList.remove('error');
+
+  const d = getPieceData(editingPiece);
+  const selBtn = document.querySelector('.status-opt[class*="sel-"]');
+  if (selBtn) { const cls=[...selBtn.classList].find(c=>c.startsWith('sel-')); if(cls) d.status=cls.replace('sel-',''); }
+  d.performances=tempPerformances;
+  if (tempPerformances.length) d.lastPlayed=[...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date))[0].date;
+  d.memo=document.getElementById('memoInput').value;
+
+  // 제목/작곡자 변경 처리
+  if (newTitle !== editingPiece) {
+    const exists = categories.some(c=>c.pieces.some(p=>p.title===newTitle&&p.title!==editingPiece));
+    if (exists) { showToast('같은 이름의 곡이 이미 있습니다'); return; }
+    // state key rename
+    state.pieces[newTitle] = state.pieces[editingPiece];
+    delete state.pieces[editingPiece];
+    // categories rename
+    categories.forEach(c=>{ const p=c.pieces.find(p=>p.title===editingPiece); if(p) p.title=newTitle; });
+    editingPiece = newTitle;
+  }
+  // composer update
+  const meta = getPieceMeta(editingPiece);
+  if (meta) {
+    categories.forEach(c=>{ const p=c.pieces.find(p=>p.title===editingPiece); if(p) p.composer=newComposer; });
+  }
+
+  saveAll(); closeModal(); render();
+  showToast('저장되었습니다');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); editingPiece=null; }
+
+/* ══════════════ ADD PIECE MODAL ══════════════ */
+function openAddPieceModal(presetCatId) {
+  const sel=document.getElementById('newPieceCat');
+  sel.innerHTML='';
+  categories.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id; o.textContent=`${c.icon} ${c.name}`;
+    if (c.id===presetCatId) o.selected=true;
+    sel.appendChild(o);
+  });
+  document.getElementById('newPieceTitle').value='';
+  document.getElementById('newPieceComposer').value='';
+  document.getElementById('newPieceStatus').value='암보';
+  document.getElementById('addPieceModal').classList.add('open');
+  setTimeout(()=>document.getElementById('newPieceTitle').focus(),50);
+}
+
+function closeAddModal() { document.getElementById('addPieceModal').classList.remove('open'); }
+
+function saveNewPiece() {
+  const title=document.getElementById('newPieceTitle').value.trim();
+  const composer=document.getElementById('newPieceComposer').value.trim();
+  const catId=document.getElementById('newPieceCat').value;
+  const status=document.getElementById('newPieceStatus').value;
+  if (!title) { const el=document.getElementById('newPieceTitle'); el.classList.add('error'); setTimeout(()=>el.classList.remove('error'),1500); return; }
+  if (categories.some(c=>c.pieces.some(p=>p.title===title))) { showToast('같은 이름의 곡이 이미 있습니다'); return; }
+  getCatById(catId).pieces.push({title,composer});
+  state.pieces[title]={status,performances:[],memo:'',lastPlayed:null};
+  saveAll(); closeAddModal(); render();
+  showToast(`"${title}" 추가됨`);
+}
+
+/* ══════════════ ADD CATEGORY MODAL ══════════════ */
+function openAddCatModal() {
+  document.getElementById('newCatName').value='';
+  document.getElementById('newCatIcon').value='🎼';
+  document.getElementById('iconPreview').textContent='🎼';
+  document.getElementById('addCatModal').classList.add('open');
+  setTimeout(()=>document.getElementById('newCatName').focus(),50);
+}
+
+function closeAddCatModal() { document.getElementById('addCatModal').classList.remove('open'); }
+
+function updateIconPreview(val) { document.getElementById('iconPreview').textContent=val||'🎼'; }
+
+function saveNewCat() {
+  const name=document.getElementById('newCatName').value.trim();
+  const icon=document.getElementById('newCatIcon').value.trim()||'🎼';
+  if (!name) { const el=document.getElementById('newCatName'); el.classList.add('error'); setTimeout(()=>el.classList.remove('error'),1500); return; }
+  const id='cat_'+Date.now();
+  categories.push({id,name,icon,pieces:[]});
+  saveAll(); closeAddCatModal(); render();
+  showToast(`"${name}" 카테고리 추가됨`);
+}
+
+/* ══════════════ DELETE ══════════════ */
+function confirmDeletePiece() {
+  if (!editingPiece) return;
+  openConfirm(`<strong>${editingPiece}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>{ deletePiece(editingPiece); closeModal(); });
+}
+
+function confirmDeletePieceInline(e,title) {
+  e.stopPropagation();
+  openConfirm(`<strong>${title}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>deletePiece(title));
+}
+
+function deletePiece(title) {
+  categories.forEach(c=>{ c.pieces=c.pieces.filter(p=>p.title!==title); });
+  delete state.pieces[title];
+  saveAll(); render();
+  showToast('삭제되었습니다');
+}
+
+function confirmDeleteCat(catId) {
+  const cat=getCatById(catId);
+  if (!cat) return;
+  openConfirm(`카테고리 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>포함된 ${cat.pieces.length}개 곡도 모두 삭제됩니다.`,()=>{
+    cat.pieces.forEach(p=>delete state.pieces[p.title]);
+    categories=categories.filter(c=>c.id!==catId);
+    saveAll(); render();
+    showToast('카테고리가 삭제되었습니다');
+  });
+}
+
+/* ══════════════ CONFIRM DIALOG ══════════════ */
+function openConfirm(msg,cb) { confirmCallback=cb; document.getElementById('confirmMsg').innerHTML=msg; document.getElementById('confirmOverlay').classList.add('open'); }
+function closeConfirm() { confirmCallback=null; document.getElementById('confirmOverlay').classList.remove('open'); }
+function execConfirm() { if(confirmCallback)confirmCallback(); closeConfirm(); }
+
+/* ══════════════ JSON IMPORT / EXPORT ══════════════ */
+function exportJSON() {
+  const data = { version:2, exportedAt:new Date().toISOString(), categories, state };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`guitar_repertory_${new Date().toISOString().split('T')[0]}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('JSON 파일로 내보내기 완료');
+}
+
+function importJSON() { document.getElementById('fileInput').click(); }
+
+function handleFileImport(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=evt=>{
+    try {
+      const parsed=JSON.parse(evt.target.result);
+      if (parsed.categories && parsed.state) {
+        categories=parsed.categories; state=parsed.state;
+        saveAll(); render();
+        showToast('불러오기 완료');
+      } else { showToast('올바른 형식의 파일이 아닙니다'); }
+    } catch(err) { showToast('파일 읽기 실패: '+err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+/* ══════════════ PRINT ══════════════ */
+function printView() {
+  document.getElementById('printDate').textContent = '출력일: '+new Date().toLocaleDateString('ko-KR');
+  // 접힌 카테고리 모두 펼침 (인쇄 후 복원)
+  const wasCollapsed={};
+  document.querySelectorAll('.category-section.collapsed').forEach(el=>{
+    const id=Object.keys(state.collapsed).find(k=>state.collapsed[k]&&el.querySelector('.cat-name')?.textContent?.includes(getCatById(k)?.name||'__'));
+    el.classList.remove('collapsed');
+  });
+  window.print();
+}
+
+/* ══════════════ TOAST ══════════════ */
+let toastTimer;
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ══════════════ TAB ══════════════ */
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['repertory','performances'][i]===tab));
+  document.getElementById('repertoryView').classList.toggle('active',tab==='repertory');
+  document.getElementById('performancesView').classList.toggle('active',tab==='performances');
+  if (tab==='performances') renderTimeline();
+}
+
+/* ══════════════ KEYBOARD ══════════════ */
+document.addEventListener('keydown',e=>{
+  if (e.key==='Escape') {
+    if (document.getElementById('confirmOverlay').classList.contains('open')) closeConfirm();
+    else if (document.getElementById('addCatModal').classList.contains('open')) closeAddCatModal();
+    else if (document.getElementById('addPieceModal').classList.contains('open')) closeAddModal();
+    else if (document.getElementById('modal').classList.contains('open')) closeModal();
+  }
+});
+
+/* ══════════════ INIT ══════════════ */
+loadAll();
+render();
+</script>
+</body>
+</html>
