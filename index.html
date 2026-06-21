@@ -45,6 +45,22 @@ h1 em { font-style:italic; color:var(--gold); }
 .hdr-btn-ghost:hover { border-color:var(--muted); color:var(--cream); }
 .hdr-btn-print { border:1px solid rgba(124,184,122,.4); background:rgba(124,184,122,.06); color:var(--green); }
 .hdr-btn-print:hover { background:rgba(124,184,122,.15); }
+
+/* ── Gist 동기화 버튼/상태 ── */
+.hdr-btn-gist { border:1px solid rgba(108,159,209,.4); background:rgba(108,159,209,.06); color:#6c9fd1; position:relative; }
+.hdr-btn-gist:hover { background:rgba(108,159,209,.15); }
+.hdr-btn-gist.connected { border-color:rgba(124,184,122,.5); color:var(--green); background:rgba(124,184,122,.07); }
+
+.sync-dot {
+  width:6px; height:6px; border-radius:50%; flex-shrink:0;
+  background:var(--muted); transition:background .2s;
+}
+.sync-dot.synced   { background:var(--green); box-shadow:0 0 4px rgba(124,184,122,.6); }
+.sync-dot.syncing  { background:var(--amber); animation:syncPulse 1s ease-in-out infinite; }
+.sync-dot.error    { background:var(--red); }
+@keyframes syncPulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+.sync-status-text { font-size:10px; color:var(--muted); white-space:nowrap; }
 .header-stats { display:flex; gap:28px; margin-top:20px; flex-wrap:wrap; }
 .stat { display:flex; flex-direction:column; gap:2px; }
 .stat-num { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:300; color:var(--gold); line-height:1; }
@@ -447,7 +463,7 @@ h1 em { font-style:italic; color:var(--gold); }
   body::before, .header-actions, .controls, .tab-bar,
   .practice-banner, .cat-actions, .record-btn, .piece-del-btn,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast,
-  .reorder-controls, .drag-handle,
+  .reorder-controls, .drag-handle, .sync-status-text,
   #performancesView { display:none !important; }
 
   .app { max-width:100%; padding:0; }
@@ -592,6 +608,10 @@ h1 em { font-style:italic; color:var(--gold); }
         <button class="hdr-btn hdr-btn-ghost" onclick="openAddCatModal()">＋ 카테고리</button>
         <button class="hdr-btn hdr-btn-ghost" onclick="importJSON()">📂 불러오기</button>
         <button class="hdr-btn hdr-btn-ghost" onclick="exportJSON()">💾 내보내기</button>
+        <button class="hdr-btn hdr-btn-gist" id="gistBtn" onclick="openGistModal()">
+          <span class="sync-dot" id="syncDot"></span>
+          <span id="gistBtnLabel">☁ Gist 연결</span>
+        </button>
         <button class="hdr-btn hdr-btn-print" onclick="printView()">🖨 인쇄 (PDF)</button>
       </div>
     </div>
@@ -601,6 +621,7 @@ h1 em { font-style:italic; color:var(--gold); }
       <div class="stat"><span class="stat-num" id="practiceCount">0</span><span class="stat-label">연습중</span></div>
       <div class="stat"><span class="stat-num" id="perfCount">0</span><span class="stat-label">공연이력</span></div>
     </div>
+    <div class="sync-status-text" id="syncStatusText" style="margin-top:8px"></div>
   </header>
 
   <div id="practiceBanner" class="practice-banner" style="display:none">
@@ -766,6 +787,44 @@ h1 em { font-style:italic; color:var(--gold); }
   </div>
 </div>
 
+<!-- ══ Gist 동기화 설정 모달 ══ -->
+<div class="modal-overlay" id="gistModal" onclick="if(event.target===this)closeGistModal()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title" style="margin-bottom:6px">☁ GitHub Gist 동기화</div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:18px">
+      Personal Access Token과 Gist ID를 입력하면, 이후 저장할 때마다 자동으로 Gist에 업로드되고
+      다른 컴퓨터에서 열 때 자동으로 최신 데이터를 불러옵니다.
+    </p>
+
+    <div class="form-row">
+      <label class="form-label">Personal Access Token *</label>
+      <input class="form-input" id="gistToken" type="password" placeholder="ghp_로 시작하는 토큰">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Gist ID (비워두면 새로 생성)</label>
+      <input class="form-input" id="gistId" type="text" placeholder="예: a1b2c3d4e5f6...">
+    </div>
+
+    <div id="gistInfoBox" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--muted); line-height:1.6;">
+      <div>연결됨 · 마지막 동기화: <span id="gistLastSync">-</span></div>
+      <div style="margin-top:3px">Gist: <a id="gistLink" href="#" target="_blank" style="color:var(--gold)">열기 ↗</a></div>
+    </div>
+
+    <div class="modal-footer" style="margin-top:8px">
+      <button class="btn-danger" id="gistDisconnectBtn" style="display:none" onclick="disconnectGist()">연결 해제</button>
+      <div class="footer-right" style="margin-left:auto">
+        <button class="btn-ghost" onclick="closeGistModal()">닫기</button>
+        <button class="btn-primary" onclick="connectGist()">연결 / 저장</button>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.7">
+      <strong style="color:var(--gold); font-weight:400">토큰 만드는 법</strong><br>
+      github.com/settings/tokens → Generate new token (classic) → <strong style="color:var(--cream)">gist</strong> 권한 체크 → 생성된 토큰 복사
+    </div>
+  </div>
+</div>
+
 <!-- ══ 확인 ══ -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
@@ -860,6 +919,7 @@ function loadAll() {
 
 function saveAll() {
   try { localStorage.setItem('guitar_repertory_v4',JSON.stringify({categories,state})); } catch(e){}
+  scheduleGistUpload(); // 변경될 때마다 Gist 자동 업로드 예약 (디바운스)
 }
 
 function getPieceData(title) {
@@ -1572,15 +1632,220 @@ function switchTab(tab){
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('confirmOverlay').classList.contains('open'))closeConfirm();
+    else if(document.getElementById('gistModal').classList.contains('open'))closeGistModal();
     else if(document.getElementById('addCatModal').classList.contains('open'))closeAddCatModal();
     else if(document.getElementById('addPieceModal').classList.contains('open'))closeAddModal();
     else if(document.getElementById('modal').classList.contains('open'))closeModal();
   }
 });
 
+/* ══════════════ GITHUB GIST 자동 동기화 ══════════════ */
+const GIST_FILENAME = 'guitar_repertory.json';
+let gistConfig = { token:'', gistId:'' };
+let gistUploadTimer = null;
+let gistSyncing = false;
+
+function loadGistConfig() {
+  try {
+    const saved = localStorage.getItem('guitar_gist_config');
+    if (saved) gistConfig = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function saveGistConfig() {
+  try { localStorage.setItem('guitar_gist_config', JSON.stringify(gistConfig)); } catch(e) {}
+}
+
+function isGistConnected() {
+  return !!(gistConfig.token && gistConfig.gistId);
+}
+
+function setSyncStatus(status, msg) {
+  // status: 'idle' | 'syncing' | 'synced' | 'error'
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncStatusText');
+  const btnLabel = document.getElementById('gistBtnLabel');
+  const btn = document.getElementById('gistBtn');
+  if (!dot) return;
+
+  dot.className = 'sync-dot' + (status !== 'idle' ? ' ' + status : '');
+  if (text) text.textContent = msg || '';
+
+  if (isGistConnected()) {
+    btn.classList.add('connected');
+    btnLabel.textContent = status === 'syncing' ? '☁ 동기화 중...' : '☁ Gist 연결됨';
+  } else {
+    btn.classList.remove('connected');
+    btnLabel.textContent = '☁ Gist 연결';
+  }
+}
+
+/* ── 모달 ── */
+function openGistModal() {
+  document.getElementById('gistToken').value = gistConfig.token || '';
+  document.getElementById('gistId').value = gistConfig.gistId || '';
+  const infoBox = document.getElementById('gistInfoBox');
+  const disconnectBtn = document.getElementById('gistDisconnectBtn');
+  if (isGistConnected()) {
+    infoBox.style.display = 'block';
+    disconnectBtn.style.display = 'inline-block';
+    document.getElementById('gistLink').href = `https://gist.github.com/${gistConfig.gistId}`;
+    const lastSync = localStorage.getItem('guitar_gist_last_sync');
+    document.getElementById('gistLastSync').textContent = lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '-';
+  } else {
+    infoBox.style.display = 'none';
+    disconnectBtn.style.display = 'none';
+  }
+  document.getElementById('gistModal').classList.add('open');
+}
+function closeGistModal() { document.getElementById('gistModal').classList.remove('open'); }
+
+function disconnectGist() {
+  openConfirm('Gist 연결을 해제하시겠어요?<br>로컬 데이터는 그대로 유지됩니다.', () => {
+    gistConfig = { token:'', gistId:'' };
+    saveGistConfig();
+    setSyncStatus('idle','');
+    closeGistModal();
+    showToast('Gist 연결이 해제되었습니다');
+  });
+}
+
+/* ── 연결 + 최초 동기화 ── */
+async function connectGist() {
+  const token = document.getElementById('gistToken').value.trim();
+  let gistId = document.getElementById('gistId').value.trim();
+
+  if (!token) {
+    const el = document.getElementById('gistToken');
+    el.style.borderColor = 'var(--red)';
+    setTimeout(()=>el.style.borderColor='',1200);
+    showToast('Token을 입력해주세요');
+    return;
+  }
+
+  gistConfig.token = token;
+  setSyncStatus('syncing', 'Gist 연결 확인 중...');
+
+  try {
+    if (gistId) {
+      // 기존 Gist에서 데이터 가져오기
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: { 'Authorization': `token ${token}`, 'Accept':'application/vnd.github+json' }
+      });
+      if (!res.ok) throw new Error(res.status === 404 ? 'Gist를 찾을 수 없습니다 (ID 확인)' : `오류 ${res.status} (Token 권한 확인)`);
+      const gist = await res.json();
+      const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
+
+      if (file && file.content) {
+        const remote = JSON.parse(file.content);
+        if (remote.categories && remote.state) {
+          // 원격 데이터가 있으면: 더 최신인 쪽 사용 여부 확인
+          const localCount = Object.keys(state.pieces||{}).length;
+          const remoteCount = Object.keys(remote.state.pieces||{}).length;
+          if (remoteCount > 0) {
+            categories = remote.categories;
+            state = remote.state;
+            try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
+            render();
+            showToast('Gist에서 데이터를 불러왔습니다');
+          }
+        }
+      }
+      gistConfig.gistId = gistId;
+    } else {
+      // 새 Gist 생성
+      const res = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': `token ${token}`, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          description: 'Classical Guitar Repertory (auto-sync)',
+          public: false,
+          files: { [GIST_FILENAME]: { content: JSON.stringify({categories,state},null,2) } }
+        })
+      });
+      if (!res.ok) throw new Error(`Gist 생성 실패 (${res.status}) — Token의 gist 권한을 확인해주세요`);
+      const gist = await res.json();
+      gistConfig.gistId = gist.id;
+      document.getElementById('gistId').value = gist.id;
+      showToast('새 Gist가 생성되었습니다');
+    }
+
+    saveGistConfig();
+    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
+    setSyncStatus('synced', '✓ Gist 연결됨 · 자동 동기화 활성화');
+    closeGistModal();
+  } catch (err) {
+    setSyncStatus('error', '연결 실패: ' + err.message);
+    showToast('Gist 연결 실패: ' + err.message);
+  }
+}
+
+/* ── 자동 업로드 (디바운스) ── */
+function scheduleGistUpload() {
+  if (!isGistConnected()) return;
+  clearTimeout(gistUploadTimer);
+  setSyncStatus('syncing', '동기화 대기 중...');
+  gistUploadTimer = setTimeout(uploadToGist, 1500); // 1.5초 디바운스 — 연속 변경 시 한번만 업로드
+}
+
+async function uploadToGist() {
+  if (!isGistConnected() || gistSyncing) return;
+  gistSyncing = true;
+  setSyncStatus('syncing', 'Gist에 업로드 중...');
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${gistConfig.token}`,
+        'Accept':'application/vnd.github+json',
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({
+        files: { [GIST_FILENAME]: { content: JSON.stringify({categories,state},null,2) } }
+      })
+    });
+    if (!res.ok) throw new Error(`업로드 실패 (${res.status})`);
+    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
+    setSyncStatus('synced', '✓ 마지막 동기화: ' + new Date().toLocaleTimeString('ko-KR'));
+  } catch (err) {
+    setSyncStatus('error', '동기화 실패: ' + err.message);
+  } finally {
+    gistSyncing = false;
+  }
+}
+
+/* ── 시작 시 자동으로 Gist에서 최신 데이터 받아오기 ── */
+async function syncFromGistOnLoad() {
+  if (!isGistConnected()) { setSyncStatus('idle',''); return; }
+  setSyncStatus('syncing', 'Gist에서 불러오는 중...');
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
+      headers: { 'Authorization': `token ${gistConfig.token}`, 'Accept':'application/vnd.github+json' }
+    });
+    if (!res.ok) throw new Error(`불러오기 실패 (${res.status})`);
+    const gist = await res.json();
+    const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
+    if (file && file.content) {
+      const remote = JSON.parse(file.content);
+      if (remote.categories && remote.state) {
+        categories = remote.categories;
+        state = remote.state;
+        try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
+        render();
+      }
+    }
+    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
+    setSyncStatus('synced', '✓ Gist와 동기화됨 · ' + new Date().toLocaleTimeString('ko-KR'));
+  } catch (err) {
+    setSyncStatus('error', '불러오기 실패: ' + err.message + ' (로컬 데이터 사용)');
+  }
+}
+
 /* ══════════════ INIT ══════════════ */
+loadGistConfig();
 loadAll();
 render();
+syncFromGistOnLoad(); // Gist 연결되어 있으면 시작 시 최신 데이터로 자동 갱신
 </script>
 </body>
 </html>
