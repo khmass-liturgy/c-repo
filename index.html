@@ -103,14 +103,45 @@ h1 em { font-style:italic; color:var(--gold); }
 
 /* ── PIECE ROW ── */
 .piece-item {
-  display:flex; align-items:center; gap:12px;
-  padding:11px 18px 11px 46px;
+  display:flex; align-items:center; gap:10px;
+  padding:11px 18px 11px 8px;
   border-bottom:1px solid rgba(46,39,32,.5);
   transition:background .15s; cursor:pointer; position:relative;
 }
 .piece-item:last-child { border-bottom:none; }
 .piece-item:hover { background:rgba(201,169,110,.04); }
 .piece-item:hover .piece-del-btn { opacity:1; }
+.piece-item:hover .reorder-controls { opacity:1; }
+.piece-item.dragging { opacity:.35; background:rgba(201,169,110,.08); }
+.piece-item.drag-over-top    { box-shadow: inset 0 2px 0 var(--gold); }
+.piece-item.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--gold); }
+
+/* ── 순서 변경 컨트롤 ── */
+.reorder-controls {
+  display:flex; flex-direction:column; gap:1px;
+  opacity:0; transition:opacity .15s; flex-shrink:0;
+  margin-right:2px;
+}
+.reorder-btn {
+  width:16px; height:13px; border:none; background:transparent;
+  color:var(--muted); cursor:pointer; font-size:9px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  transition:color .15s; border-radius:2px;
+}
+.reorder-btn:hover { color:var(--gold); background:rgba(201,169,110,.12); }
+.reorder-btn:disabled { opacity:.2; cursor:default; }
+.reorder-btn:disabled:hover { color:var(--muted); background:transparent; }
+
+.drag-handle {
+  width:16px; flex-shrink:0; cursor:grab;
+  color:var(--muted); opacity:0; transition:opacity .15s, color .15s;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; letter-spacing:-2px; user-select:none;
+}
+.piece-item:hover .drag-handle { opacity:.6; }
+.drag-handle:hover { color:var(--gold); opacity:1 !important; }
+.drag-handle:active { cursor:grabbing; }
+
 .piece-info { flex:1; display:flex; align-items:baseline; gap:10px; min-width:0; }
 .piece-title { font-size:15.5px; font-weight:300; color:var(--cream); letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .piece-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:17px; }
@@ -416,6 +447,7 @@ h1 em { font-style:italic; color:var(--gold); }
   body::before, .header-actions, .controls, .tab-bar,
   .practice-banner, .cat-actions, .record-btn, .piece-del-btn,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast,
+  .reorder-controls, .drag-handle,
   #performancesView { display:none !important; }
 
   .app { max-width:100%; padding:0; }
@@ -812,6 +844,7 @@ let categories, state;
 let currentFilter='all', currentSearch='';
 let editingPiece=null, tempPerformances=[];
 let confirmCallback=null;
+let dragState=null; // { catId, title } — 드래그 중인 곡 추적
 
 function loadAll() {
   try {
@@ -867,6 +900,7 @@ function renderCategories() {
   const container=document.getElementById('categoriesContainer');
   container.innerHTML='';
   let hasAny=false;
+  const canReorder = currentFilter==='all' && !currentSearch; // 필터/검색 중엔 순서 변경 비활성화
 
   categories.forEach(cat=>{
     const filtered=cat.pieces.filter(p=>{
@@ -900,7 +934,9 @@ function renderCategories() {
     container.appendChild(sec);
 
     const list=sec.querySelector(`#list-${cat.id}`);
-    (currentSearch||currentFilter!=='all'?filtered:cat.pieces).forEach(p=>{
+    const pieceArr = (currentSearch||currentFilter!=='all'?filtered:cat.pieces);
+
+    pieceArr.forEach((p,idx)=>{
       const d=getPieceData(p.title);
       const isItalic=/[a-zA-Z]/.test(p.title[0]);
       const lpStr=formatLastPlayed(d.lastPlayed);
@@ -909,9 +945,21 @@ function renderCategories() {
       const item=document.createElement('div');
       item.className='piece-item';
       item.style.setProperty('--print-dot',dotColor);
-      item.onclick=()=>openModal(p.title,cat.name);
+      item.dataset.title = p.title;
+      item.dataset.catId = cat.id;
+      item.onclick=(e)=>{ if(!e.target.closest('.reorder-controls,.drag-handle')) openModal(p.title,cat.name); };
       const checks = Array(7).fill('<span class="piece-check-box"></span>').join('');
+
+      const isFirst = idx===0, isLast = idx===pieceArr.length-1;
+      const reorderHtml = canReorder ? `
+        <span class="drag-handle" draggable="true" title="드래그해서 순서 변경">⠿</span>
+        <span class="reorder-controls">
+          <button class="reorder-btn" onclick="movePiece(event,'${cat.id}','${p.title}',-1)" ${isFirst?'disabled':''} title="위로">▲</button>
+          <button class="reorder-btn" onclick="movePiece(event,'${cat.id}','${p.title}',1)" ${isLast?'disabled':''} title="아래로">▼</button>
+        </span>` : '';
+
       item.innerHTML=`
+        ${reorderHtml}
         <div class="piece-info">
           <span class="piece-title${isItalic?' italic':''}">${p.title}</span>
           ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
@@ -921,6 +969,41 @@ function renderCategories() {
         <span class="last-played ${lpCls}">${lpStr}</span>
         <button class="record-btn" onclick="quickPlay(event,'${p.title}')" title="오늘 연주">▶</button>
         <button class="piece-del-btn" onclick="confirmDeletePieceInline(event,'${p.title}')" title="삭제">✕</button>`;
+
+      if (canReorder) {
+        const handle = item.querySelector('.drag-handle');
+        handle.addEventListener('dragstart', e => {
+          e.stopPropagation();
+          dragState = { catId: cat.id, title: p.title };
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        handle.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+          list.querySelectorAll('.piece-item').forEach(el=>el.classList.remove('drag-over-top','drag-over-bottom'));
+          dragState = null;
+        });
+        item.addEventListener('dragover', e => {
+          if (!dragState || dragState.catId !== cat.id) return;
+          e.preventDefault();
+          const rect = item.getBoundingClientRect();
+          const isTopHalf = (e.clientY - rect.top) < rect.height/2;
+          item.classList.toggle('drag-over-top', isTopHalf);
+          item.classList.toggle('drag-over-bottom', !isTopHalf);
+        });
+        item.addEventListener('dragleave', () => {
+          item.classList.remove('drag-over-top','drag-over-bottom');
+        });
+        item.addEventListener('drop', e => {
+          e.preventDefault();
+          item.classList.remove('drag-over-top','drag-over-bottom');
+          if (!dragState || dragState.catId !== cat.id || dragState.title === p.title) return;
+          const rect = item.getBoundingClientRect();
+          const isTopHalf = (e.clientY - rect.top) < rect.height/2;
+          reorderPiece(cat.id, dragState.title, p.title, isTopHalf);
+        });
+      }
+
       list.appendChild(item);
     });
   });
@@ -972,6 +1055,35 @@ function quickPlay(e,title) {
   e.stopPropagation();
   getPieceData(title).lastPlayed=new Date().toISOString().split('T')[0];
   saveAll(); renderCategories(); renderPracticeBanner();
+}
+
+/* ══════════════ REORDER (순서 변경) ══════════════ */
+function movePiece(e, catId, title, dir) {
+  e.stopPropagation();
+  const cat = getCatById(catId);
+  if (!cat) return;
+  const idx = cat.pieces.findIndex(p => p.title === title);
+  const newIdx = idx + dir;
+  if (idx < 0 || newIdx < 0 || newIdx >= cat.pieces.length) return;
+  const [moved] = cat.pieces.splice(idx, 1);
+  cat.pieces.splice(newIdx, 0, moved);
+  saveAll();
+  renderCategories();
+}
+
+function reorderPiece(catId, draggedTitle, targetTitle, insertBefore) {
+  const cat = getCatById(catId);
+  if (!cat) return;
+  const fromIdx = cat.pieces.findIndex(p => p.title === draggedTitle);
+  if (fromIdx < 0) return;
+  const [moved] = cat.pieces.splice(fromIdx, 1);
+  let targetIdx = cat.pieces.findIndex(p => p.title === targetTitle);
+  if (targetIdx < 0) targetIdx = cat.pieces.length;
+  const insertIdx = insertBefore ? targetIdx : targetIdx + 1;
+  cat.pieces.splice(insertIdx, 0, moved);
+  saveAll();
+  renderCategories();
+  showToast('순서가 변경되었습니다');
 }
 
 /* ══════════════ PIECE MODAL ══════════════ */
