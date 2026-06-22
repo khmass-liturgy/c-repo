@@ -1060,9 +1060,8 @@ function renderCatTabs() {
   allTab.onclick = () => setCatTab('all');
   bar.appendChild(allTab);
 
-  // 카테고리별 탭
+  // 카테고리별 탭 (빈 카테고리도 표시)
   categories.forEach(cat => {
-    if (!cat.pieces.length) return; // 빈 카테고리는 탭 숨김
     const tab = document.createElement('button');
     tab.className = `cat-tab${currentCatTab===cat.id?' active':''}`;
     tab.innerHTML = `<span class="tab-icon">${cat.icon}</span>${cat.name} <span class="tab-count">${cat.pieces.length}</span>`;
@@ -1102,7 +1101,10 @@ function renderCategories() {
       const ms=!currentSearch||p.title.toLowerCase().includes(currentSearch.toLowerCase())||(p.composer||'').toLowerCase().includes(currentSearch.toLowerCase());
       return mf&&ms;
     });
+    // 필터/검색 중에 결과 없으면 건너뜀
     if (!filtered.length&&(currentFilter!=='all'||currentSearch)) return;
+    // 빈 카테고리를 특정 탭에서 선택한 경우 → hasAny만 true로 하고 section은 비어있게
+    if (!cat.pieces.length && currentCatTab!=='all') { hasAny=true; return; }
     hasAny=true;
 
     // 특정 카테고리 탭 선택 시 카테고리 헤더 숨기고 곡 목록만 표시
@@ -1211,7 +1213,12 @@ function renderCategories() {
     });
   });
 
-  if (!hasAny) container.innerHTML='<div class="empty-state">검색 결과가 없습니다</div>';
+  if (!hasAny) {
+    const msg = currentCatTab !== 'all' && !currentSearch && currentFilter === 'all'
+      ? '곡이 없습니다.<br><button onclick="openAddPieceModal(\''+currentCatTab+'\')" style="margin-top:10px;padding:6px 14px;border:1px solid var(--gold);background:rgba(201,169,110,.1);color:var(--gold);border-radius:2px;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;font-size:12px">＋ 곡 추가</button>'
+      : '검색 결과가 없습니다';
+    container.innerHTML = `<div class="empty-state">${msg}</div>`;
+  }
 }
 
 function formatLastPlayed(d) {
