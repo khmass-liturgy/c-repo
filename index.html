@@ -190,15 +190,30 @@ h1 em { font-style:italic; color:var(--gold); }
 .piece-del-btn:hover { border-color:var(--red); color:var(--red); opacity:1!important; }
 
 /* ── 악보 링크 버튼 ── */
+/* ── 악보 링크 버튼 ── */
 .score-btn {
-  width:24px; height:24px; border:1px solid var(--border); background:transparent;
-  color:var(--muted); border-radius:50%; cursor:pointer; font-size:11px;
-  display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0;
-  text-decoration:none;
+  display:none; /* 기본 숨김 - 링크 없으면 안보임 */
 }
-.score-btn:hover { border-color:#6c9fd1; color:#6c9fd1; }
-.score-btn.has-link { border-color:rgba(108,159,209,.4); color:#6c9fd1; opacity:.8; }
-.score-btn.has-link:hover { opacity:1; }
+.score-btn.has-link {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px 2px 6px;
+  border:1px solid rgba(201,169,110,.45);
+  background:rgba(201,169,110,.1);
+  color:var(--gold);
+  border-radius:10px; cursor:pointer; font-size:10.5px;
+  text-decoration:none; transition:all .18s; flex-shrink:0;
+  white-space:nowrap; letter-spacing:.3px;
+  font-family:'Noto Sans KR',sans-serif; font-weight:400;
+  line-height:1.5;
+}
+.score-btn.has-link:hover {
+  background:rgba(201,169,110,.22);
+  border-color:var(--gold);
+  color:var(--gold2,#e8c98a);
+}
+
+/* 악보 링크 있는 곡명 → 금색 */
+.piece-title.has-score { color:var(--gold) !important; }
 
 /* ── 모달 내 악보 링크 영역 ── */
 .score-link-row {
@@ -1066,16 +1081,16 @@ function renderCategories() {
       item.innerHTML=`
         ${reorderHtml}
         <div class="piece-info">
-          <span class="piece-title${isItalic?' italic':''}">${p.title}</span>
+          <span class="piece-title${isItalic?' italic':''}${d.scoreLink?' has-score':''}">${p.title}</span>
+          ${d.scoreLink
+            ? `<a class="score-btn has-link" href="${d.scoreLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄 악보</a>`
+            : ''}
           ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
         </div>
         <span class="piece-checks">${checks}</span>
         <button class="status-badge status-${d.status}" onclick="cycleStatus(event,'${p.title}')">${d.status}</button>
         <span class="last-played ${lpCls}">${lpStr}</span>
         <button class="record-btn" onclick="quickPlay(event,'${p.title}')" title="오늘 연주">▶</button>
-        ${d.scoreLink
-          ? `<a class="score-btn has-link" href="${d.scoreLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄</a>`
-          : `<span class="score-btn" onclick="openModal('${p.title}','${cat.name}')" title="악보 링크 추가">📄</span>`}
         <button class="piece-del-btn" onclick="confirmDeletePieceInline(event,'${p.title}')" title="삭제">✕</button>`;
 
       if (canReorder) {
