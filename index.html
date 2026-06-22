@@ -67,7 +67,37 @@ h1 em { font-style:italic; color:var(--gold); }
 .stat-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
 
 /* ── CONTROLS ── */
-.controls { display:flex; gap:10px; margin-bottom:26px; flex-wrap:wrap; align-items:center; }
+/* ── 카테고리 탭 바 ── */
+.cat-tab-bar {
+  display:flex; gap:0; margin-bottom:0;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto; scrollbar-width:none;
+  flex-wrap:nowrap;
+}
+.cat-tab-bar::-webkit-scrollbar { display:none; }
+
+.cat-tab {
+  padding:9px 16px; background:none; border:none;
+  color:var(--muted); font-size:12.5px; letter-spacing:.3px;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  position:relative; transition:color .2s; white-space:nowrap;
+  flex-shrink:0; display:flex; align-items:center; gap:5px;
+}
+.cat-tab::after {
+  content:''; position:absolute; bottom:-1px; left:0; right:0;
+  height:2px; background:var(--gold); transform:scaleX(0); transition:transform .2s;
+}
+.cat-tab:hover { color:var(--cream); }
+.cat-tab.active { color:var(--gold); }
+.cat-tab.active::after { transform:scaleX(1); }
+.cat-tab .tab-icon { font-size:12px; }
+.cat-tab .tab-count {
+  font-size:10px; color:var(--muted); background:var(--bg3);
+  border-radius:8px; padding:1px 5px; transition:all .2s;
+}
+.cat-tab.active .tab-count { background:rgba(201,169,110,.15); color:var(--gold); }
+
+.controls { display:flex; gap:10px; margin-bottom:26px; flex-wrap:wrap; align-items:center; margin-top:12px; }
 .filter-btn {
   padding:6px 15px; border:1px solid var(--border); background:transparent;
   color:var(--muted); font-family:'Noto Sans KR',sans-serif; font-size:12px;
@@ -509,7 +539,7 @@ h1 em { font-style:italic; color:var(--gold); }
   }
 
   /* ── 화면 전용 요소 숨김 ── */
-  body::before, .header-actions, .controls, .tab-bar,
+  body::before, .header-actions, .controls, .tab-bar, .cat-tab-bar,
   .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast,
   .reorder-controls, .drag-handle, .sync-status-text,
@@ -687,6 +717,9 @@ h1 em { font-style:italic; color:var(--gold); }
   </div>
 
   <div id="repertoryView" class="repertory-view active">
+    <!-- 카테고리 탭 바 -->
+    <div class="cat-tab-bar" id="catTabBar"></div>
+
     <div class="controls">
       <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
       <button class="filter-btn" onclick="setFilter('암보',this)">암보</button>
@@ -961,6 +994,7 @@ const INITIAL_CATEGORIES = [
 /* ══════════════ STATE ══════════════ */
 let categories, state;
 let currentFilter='all', currentSearch='';
+let currentCatTab='all'; // 현재 선택된 카테고리 탭 ID
 let editingPiece=null, tempPerformances=[];
 let confirmCallback=null;
 let dragState=null; // { catId, title } — 드래그 중인 곡 추적
@@ -993,7 +1027,7 @@ function getPieceMeta(title) {
 }
 
 /* ══════════════ RENDER ══════════════ */
-function render() { renderStats(); renderPracticeBanner(); renderCategories(); }
+function render() { renderStats(); renderPracticeBanner(); renderCatTabs(); renderCategories(); }
 
 function renderStats() {
   const all=Object.values(state.pieces);
@@ -1016,13 +1050,55 @@ function renderPracticeBanner() {
 
 const DOT_COLOR={'암보':'#e85d4a','연습중':'#d4833a','완성':'#7cb87a','공연가능':'#c9a96e'};
 
+function renderCatTabs() {
+  const bar = document.getElementById('catTabBar');
+  if (!bar) return;
+  bar.innerHTML = '';
+
+  // 전체 탭
+  const allTab = document.createElement('button');
+  allTab.className = `cat-tab${currentCatTab==='all'?' active':''}`;
+  const totalPieces = categories.reduce((s,c)=>s+c.pieces.length,0);
+  allTab.innerHTML = `전체 <span class="tab-count">${totalPieces}</span>`;
+  allTab.onclick = () => setCatTab('all');
+  bar.appendChild(allTab);
+
+  // 카테고리별 탭
+  categories.forEach(cat => {
+    if (!cat.pieces.length) return; // 빈 카테고리는 탭 숨김
+    const tab = document.createElement('button');
+    tab.className = `cat-tab${currentCatTab===cat.id?' active':''}`;
+    tab.innerHTML = `<span class="tab-icon">${cat.icon}</span>${cat.name} <span class="tab-count">${cat.pieces.length}</span>`;
+    tab.onclick = () => setCatTab(cat.id);
+    bar.appendChild(tab);
+  });
+}
+
+function setCatTab(catId) {
+  currentCatTab = catId;
+  renderCatTabs();
+  renderCategories();
+  // 탭 전환 시 검색어 초기화
+  if (catId !== 'all') {
+    const inp = document.querySelector('.search-input');
+    if (inp) inp.value = '';
+    currentSearch = '';
+  }
+}
+
+
 function renderCategories() {
   const container=document.getElementById('categoriesContainer');
   container.innerHTML='';
   let hasAny=false;
-  const canReorder = currentFilter==='all' && !currentSearch; // 필터/검색 중엔 순서 변경 비활성화
+  const canReorder = currentFilter==='all' && !currentSearch && currentCatTab==='all';
 
-  categories.forEach(cat=>{
+  // 카테고리 탭 필터: 특정 탭 선택 시 해당 카테고리만
+  const catsToShow = currentCatTab==='all'
+    ? categories
+    : categories.filter(c=>c.id===currentCatTab);
+
+  catsToShow.forEach(cat=>{
     const filtered=cat.pieces.filter(p=>{
       const d=getPieceData(p.title);
       const mf=currentFilter==='all'||d.status===currentFilter;
@@ -1032,10 +1108,13 @@ function renderCategories() {
     if (!filtered.length&&(currentFilter!=='all'||currentSearch)) return;
     hasAny=true;
 
-    const collapsed=state.collapsed[cat.id];
+    // 특정 카테고리 탭 선택 시 카테고리 헤더 숨기고 곡 목록만 표시
+    const showHeader = currentCatTab==='all';
+    const collapsed = showHeader ? state.collapsed[cat.id] : false;
     const sec=document.createElement('div');
     sec.className=`category-section${collapsed?' collapsed':''}`;
     sec.innerHTML=`
+      ${showHeader ? `
       <div class="category-header">
         <div class="cat-click-area" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">
           <span class="cat-icon">${cat.icon}</span>
@@ -1047,7 +1126,11 @@ function renderCategories() {
           <button class="cat-action-btn del" onclick="confirmDeleteCat('${cat.id}')" title="카테고리 삭제">✕</button>
         </div>
         <span class="cat-chevron" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">▼</span>
-      </div>
+      </div>` : `
+      <div style="display:flex;justify-content:flex-end;padding:6px 18px 0;gap:8px">
+        <button class="cat-action-btn" onclick="openAddPieceModal('${cat.id}')" title="곡 추가">＋</button>
+        <button class="cat-action-btn del" onclick="confirmDeleteCat('${cat.id}')" title="카테고리 삭제">✕</button>
+      </div>`}
       <div class="category-body"><div class="category-body-inner">
         <div class="piece-list" id="list-${cat.id}"></div>
       </div></div>`;
