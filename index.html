@@ -189,6 +189,40 @@ h1 em { font-style:italic; color:var(--gold); }
 }
 .piece-del-btn:hover { border-color:var(--red); color:var(--red); opacity:1!important; }
 
+/* ── 악보 링크 버튼 ── */
+.score-btn {
+  width:24px; height:24px; border:1px solid var(--border); background:transparent;
+  color:var(--muted); border-radius:50%; cursor:pointer; font-size:11px;
+  display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0;
+  text-decoration:none;
+}
+.score-btn:hover { border-color:#6c9fd1; color:#6c9fd1; }
+.score-btn.has-link { border-color:rgba(108,159,209,.4); color:#6c9fd1; opacity:.8; }
+.score-btn.has-link:hover { opacity:1; }
+
+/* ── 모달 내 악보 링크 영역 ── */
+.score-link-row {
+  display:flex; gap:8px; align-items:center;
+}
+.score-link-input {
+  flex:1; background:var(--bg); border:1px solid var(--border); color:var(--cream);
+  padding:8px 11px; font-size:12.5px; font-family:'Noto Sans KR',sans-serif; font-weight:300;
+  outline:none; border-radius:2px; transition:border-color .2s;
+}
+.score-link-input:focus { border-color:#6c9fd1; }
+.score-link-input::placeholder { color:var(--muted); }
+.score-open-btn {
+  padding:7px 13px; background:rgba(108,159,209,.08); border:1px solid rgba(108,159,209,.4);
+  color:#6c9fd1; font-size:12px; cursor:pointer; border-radius:2px;
+  font-family:'Noto Sans KR',sans-serif; transition:background .2s; white-space:nowrap;
+  text-decoration:none; display:flex; align-items:center; gap:4px;
+}
+.score-open-btn:hover { background:rgba(108,159,209,.18); }
+.score-open-btn:disabled, .score-open-btn.disabled { opacity:.3; pointer-events:none; }
+.score-hint {
+  font-size:11px; color:var(--muted); margin-top:5px; line-height:1.5;
+}
+
 /* ── MODALS ── */
 .modal-overlay {
   position:fixed; inset:0; background:rgba(10,8,6,.85); backdrop-filter:blur(4px);
@@ -461,7 +495,7 @@ h1 em { font-style:italic; color:var(--gold); }
 
   /* ── 화면 전용 요소 숨김 ── */
   body::before, .header-actions, .controls, .tab-bar,
-  .practice-banner, .cat-actions, .record-btn, .piece-del-btn,
+  .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast,
   .reorder-controls, .drag-handle, .sync-status-text,
   #performancesView { display:none !important; }
@@ -712,6 +746,17 @@ h1 em { font-style:italic; color:var(--gold); }
         <input class="mini-input" type="text" id="perfVenue" placeholder="공연장 / 행사명">
         <button class="btn-add" onclick="addPerformance()">추가</button>
       </div>
+    </div>
+    <div class="modal-section">
+      <span class="modal-label">악보 링크 (구글 드라이브)</span>
+      <div class="score-link-row">
+        <input class="score-link-input" id="scoreLinkInput" type="url"
+          placeholder="구글 드라이브 공유 링크를 붙여넣으세요">
+        <a class="score-open-btn disabled" id="scoreOpenBtn" href="#" target="_blank" rel="noopener">
+          📄 열기
+        </a>
+      </div>
+      <div class="score-hint">구글 드라이브 파일 → 우클릭 → 공유 → 링크 복사</div>
     </div>
     <div class="modal-section">
       <span class="modal-label">메모</span>
@@ -1028,6 +1073,9 @@ function renderCategories() {
         <button class="status-badge status-${d.status}" onclick="cycleStatus(event,'${p.title}')">${d.status}</button>
         <span class="last-played ${lpCls}">${lpStr}</span>
         <button class="record-btn" onclick="quickPlay(event,'${p.title}')" title="오늘 연주">▶</button>
+        ${d.scoreLink
+          ? `<a class="score-btn has-link" href="${d.scoreLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄</a>`
+          : `<span class="score-btn" onclick="openModal('${p.title}','${cat.name}')" title="악보 링크 추가">📄</span>`}
         <button class="piece-del-btn" onclick="confirmDeletePieceInline(event,'${p.title}')" title="삭제">✕</button>`;
 
       if (canReorder) {
@@ -1165,7 +1213,13 @@ function openModal(title,catName) {
   });
   renderPerfList();
   document.getElementById('memoInput').value=d.memo||'';
-  calInitToday();  // 달력을 오늘 날짜로 초기화
+  // 악보 링크 초기화
+  const scoreLinkInput = document.getElementById('scoreLinkInput');
+  const scoreOpenBtn   = document.getElementById('scoreOpenBtn');
+  scoreLinkInput.value = d.scoreLink||'';
+  updateScoreOpenBtn(d.scoreLink||'');
+  scoreLinkInput.oninput = () => updateScoreOpenBtn(scoreLinkInput.value.trim());
+  calInitToday();
   document.getElementById('perfVenue').value='';
   document.getElementById('modal').classList.add('open');
 }
@@ -1202,6 +1256,7 @@ function saveModal() {
   d.performances=tempPerformances;
   if(tempPerformances.length)d.lastPlayed=[...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date))[0].date;
   d.memo=document.getElementById('memoInput').value;
+  d.scoreLink=document.getElementById('scoreLinkInput').value.trim();
   if(newTitle!==editingPiece){
     if(categories.some(c=>c.pieces.some(p=>p.title===newTitle&&p.title!==editingPiece))){showToast('같은 이름의 곡이 이미 있습니다');return;}
     state.pieces[newTitle]=state.pieces[editingPiece];delete state.pieces[editingPiece];
@@ -1212,6 +1267,18 @@ function saveModal() {
   saveAll();closeModal();render();showToast('저장되었습니다');
 }
 function closeModal(){document.getElementById('modal').classList.remove('open');editingPiece=null;}
+
+function updateScoreOpenBtn(url) {
+  const btn = document.getElementById('scoreOpenBtn');
+  if (!btn) return;
+  if (url) {
+    btn.href = url;
+    btn.classList.remove('disabled');
+  } else {
+    btn.href = '#';
+    btn.classList.add('disabled');
+  }
+}
 
 /* ══════════════ ADD PIECE ══════════════ */
 function openAddPieceModal(presetCatId) {
