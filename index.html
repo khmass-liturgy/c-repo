@@ -71,25 +71,22 @@ h1 em { font-style:italic; color:var(--gold); }
 .cat-tab-bar {
   display:flex; gap:0; margin-bottom:0;
   border-bottom:1px solid var(--border);
-  overflow-x:auto; scrollbar-width:none;
-  flex-wrap:nowrap;
+  flex-wrap:wrap; /* 한 줄에 안 들어오면 두 줄로 */
 }
-.cat-tab-bar::-webkit-scrollbar { display:none; }
 
 .cat-tab {
-  padding:9px 16px; background:none; border:none;
+  padding:9px 15px; background:none; border:none;
+  border-bottom:2px solid transparent;
   color:var(--muted); font-size:12.5px; letter-spacing:.3px;
   cursor:pointer; font-family:'Noto Sans KR',sans-serif;
-  position:relative; transition:color .2s; white-space:nowrap;
-  flex-shrink:0; display:flex; align-items:center; gap:5px;
+  position:relative; transition:color .2s, border-color .2s;
+  white-space:nowrap; flex-shrink:0;
+  display:flex; align-items:center; gap:5px;
+  margin-bottom:-1px; /* border-bottom과 겹치도록 */
 }
-.cat-tab::after {
-  content:''; position:absolute; bottom:-1px; left:0; right:0;
-  height:2px; background:var(--gold); transform:scaleX(0); transition:transform .2s;
-}
+.cat-tab::after { display:none; } /* 기존 after 비활성화 */
 .cat-tab:hover { color:var(--cream); }
-.cat-tab.active { color:var(--gold); }
-.cat-tab.active::after { transform:scaleX(1); }
+.cat-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
 .cat-tab .tab-icon { font-size:12px; }
 .cat-tab .tab-count {
   font-size:10px; color:var(--muted); background:var(--bg3);
