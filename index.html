@@ -900,9 +900,14 @@ h1 em { font-style:italic; color:var(--gold); }
       <div style="margin-top:3px">Gist: <a id="gistLink" href="#" target="_blank" style="color:var(--gold)">열기 ↗</a></div>
     </div>
 
+    <!-- 진단 로그 -->
+    <div id="gistDiagBox" style="display:none; background:#0a0806; border:1px solid #3a2f20; border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:#8a7a60; line-height:1.8; font-family:monospace; max-height:160px; overflow-y:auto; white-space:pre-wrap;"></div>
+
     <div class="modal-footer" style="margin-top:8px">
       <button class="btn-danger" id="gistDisconnectBtn" style="display:none" onclick="disconnectGist()">연결 해제</button>
-      <div class="footer-right" style="margin-left:auto">
+      <div class="footer-right" style="margin-left:auto; flex-wrap:wrap; gap:6px; justify-content:flex-end">
+        <button class="btn-ghost" id="gistDiagBtn" style="display:none; font-size:11px" onclick="runGistDiag()">🔍 진단</button>
+        <button class="btn-ghost" id="gistManualSyncBtn" style="display:none; font-size:11px" onclick="manualSyncFromGist()">⬇ 지금 불러오기</button>
         <button class="btn-ghost" onclick="closeGistModal()">닫기</button>
         <button class="btn-primary" onclick="connectGist()">연결 / 저장</button>
       </div>
@@ -1855,17 +1860,110 @@ function openGistModal() {
   document.getElementById('gistId').value = gistConfig.gistId || '';
   const infoBox = document.getElementById('gistInfoBox');
   const disconnectBtn = document.getElementById('gistDisconnectBtn');
+  const diagBtn = document.getElementById('gistDiagBtn');
+  const manualBtn = document.getElementById('gistManualSyncBtn');
+  const diagBox = document.getElementById('gistDiagBox');
   if (isGistConnected()) {
     infoBox.style.display = 'block';
     disconnectBtn.style.display = 'inline-block';
+    diagBtn.style.display = 'inline-block';
+    manualBtn.style.display = 'inline-block';
+    diagBox.style.display = 'none';
     document.getElementById('gistLink').href = `https://gist.github.com/${gistConfig.gistId}`;
     const lastSync = localStorage.getItem('guitar_gist_last_sync');
     document.getElementById('gistLastSync').textContent = lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '-';
   } else {
     infoBox.style.display = 'none';
     disconnectBtn.style.display = 'none';
+    diagBtn.style.display = 'none';
+    manualBtn.style.display = 'none';
+    diagBox.style.display = 'none';
   }
   document.getElementById('gistModal').classList.add('open');
+}
+
+function diagLog(msg) {
+  const box = document.getElementById('gistDiagBox');
+  box.style.display = 'block';
+  box.textContent += new Date().toLocaleTimeString('ko-KR') + ' ' + msg + '\n';
+  box.scrollTop = box.scrollHeight;
+}
+
+async function runGistDiag() {
+  const box = document.getElementById('gistDiagBox');
+  box.textContent = '';
+  box.style.display = 'block';
+
+  diagLog('=== Gist 진단 시작 ===');
+  diagLog('Token: ' + (gistConfig.token ? gistConfig.token.substring(0,8)+'...' : '없음'));
+  diagLog('Gist ID: ' + (gistConfig.gistId || '없음'));
+  diagLog('isConnected: ' + isGistConnected());
+
+  if (!isGistConnected()) { diagLog('✗ 연결 정보 없음'); return; }
+
+  diagLog('GitHub API 호출 중...');
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
+      headers: { 'Authorization': `token ${gistConfig.token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    diagLog('HTTP 응답: ' + res.status + ' ' + res.statusText);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      diagLog('✗ 오류 응답: ' + errText.substring(0, 200));
+      return;
+    }
+
+    const gist = await res.json();
+    diagLog('Gist 설명: ' + (gist.description || '-'));
+    diagLog('파일 목록: ' + Object.keys(gist.files).join(', '));
+
+    const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
+    if (!file) { diagLog('✗ guitar_repertory.json 파일 없음'); return; }
+    diagLog('파일 크기: ' + file.size + ' bytes');
+    diagLog('truncated: ' + file.truncated);
+
+    const content = file.content ? JSON.parse(file.content) : null;
+    if (!content) { diagLog('✗ 파일 내용 파싱 실패'); return; }
+    diagLog('✓ categories: ' + (content.categories?.length || 0) + '개');
+    diagLog('✓ pieces: ' + Object.keys(content.state?.pieces || {}).length + '개');
+
+    // 악보 링크 있는 곡 확인
+    const withScore = Object.entries(content.state?.pieces || {})
+      .filter(([,d]) => d.scoreLink).map(([t]) => t);
+    diagLog('악보 링크 있는 곡: ' + (withScore.length ? withScore.join(', ') : '없음'));
+    diagLog('✓ 진단 완료 — 데이터 정상');
+  } catch(e) {
+    diagLog('✗ 예외 발생: ' + e.message);
+  }
+}
+
+async function manualSyncFromGist() {
+  diagLog('=== 수동 불러오기 시작 ===');
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
+      headers: { 'Authorization': `token ${gistConfig.token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    diagLog('HTTP: ' + res.status);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const gist = await res.json();
+    const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
+    if (!file?.content) throw new Error('파일 내용 없음');
+    const remote = JSON.parse(file.content);
+    if (!remote.categories || !remote.state) throw new Error('데이터 형식 오류');
+    categories = remote.categories;
+    state = remote.state;
+    try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
+    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
+    render();
+    setSyncStatus('synced', '✓ Gist에서 불러옴 · ' + new Date().toLocaleTimeString('ko-KR'));
+    diagLog('✓ 불러오기 성공! categories: ' + categories.length + '개, pieces: ' + Object.keys(state.pieces).length + '개');
+    const withScore = Object.entries(state.pieces).filter(([,d])=>d.scoreLink).map(([t])=>t);
+    diagLog('악보 링크: ' + (withScore.length ? withScore.join(', ') : '없음'));
+  } catch(e) {
+    diagLog('✗ 실패: ' + e.message);
+    setSyncStatus('error', '불러오기 실패: ' + e.message);
+  }
 }
 function closeGistModal() { document.getElementById('gistModal').classList.remove('open'); }
 
