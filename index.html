@@ -1161,14 +1161,7 @@ function setCatTab(catId) {
   currentCatTab = catId;
   renderCatTabs();
   renderCategories();
-  // 탭 전환 시 검색어 초기화
-  if (catId !== 'all') {
-    const inp = document.querySelector('.search-input');
-    if (inp) inp.value = '';
-    currentSearch = '';
-  }
 }
-
 
 function renderCategories() {
   const container=document.getElementById('categoriesContainer');
@@ -1190,8 +1183,8 @@ function renderCategories() {
       const ms=!currentSearch|| norm(p.title).includes(q) || norm(p.composer||'').includes(q);
       return mf&&ms;
     });
-    // 필터/검색 중에 결과 없으면 건너뜀
-    if (!filtered.length&&(currentFilter!=='all'||currentSearch)) return;
+    // 필터/검색 결과 없으면 건너뜀
+    if (!filtered.length) return;
     // 빈 카테고리를 특정 탭에서 선택한 경우 → hasAny만 true로 하고 section은 비어있게
     if (!cat.pieces.length && currentCatTab!=='all') { hasAny=true; return; }
     hasAny=true;
