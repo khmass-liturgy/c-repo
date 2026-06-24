@@ -33,7 +33,7 @@ body::before {
 header { padding:44px 0 36px; border-bottom:1px solid var(--border); margin-bottom:28px; }
 .header-top { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; }
 .header-label { font-size:11px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); margin-bottom:10px; }
-h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(32px,6vw,52px); font-weight:300; line-height:1.1; }
+h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(32px,6vw,52px); font-weight:300; line-height:1.1; color:#1a0f00; }
 h1 em { font-style:italic; color:var(--gold); }
 .header-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .hdr-btn {
@@ -77,15 +77,16 @@ h1 em { font-style:italic; color:var(--gold); }
 .cat-tab {
   padding:9px 15px; background:none; border:none;
   border-bottom:2px solid transparent;
-  color:var(--muted); font-size:12.5px; letter-spacing:.3px;
+  color:#5a3e20; font-size:12.5px; letter-spacing:.3px;
   cursor:pointer; font-family:'Noto Sans KR',sans-serif;
   position:relative; transition:color .2s, border-color .2s;
   white-space:nowrap; flex-shrink:0;
   display:flex; align-items:center; gap:5px;
-  margin-bottom:-1px; /* border-bottom과 겹치도록 */
+  margin-bottom:-1px;
 }
-.cat-tab::after { display:none; } /* 기존 after 비활성화 */
-.cat-tab:hover { color:var(--cream); }
+.cat-tab::after { display:none; }
+.cat-tab:hover { color:#1a0f00; }
+.cat-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
 .cat-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
 .cat-tab .tab-icon { font-size:12px; }
 .cat-tab .tab-count {
@@ -127,7 +128,7 @@ h1 em { font-style:italic; color:var(--gold); }
 .category-header:hover { background:#ede6d8; }
 .cat-click-area { display:flex; align-items:center; gap:12px; flex:1; cursor:pointer; }
 .cat-icon { font-size:15px; width:22px; text-align:center; }
-.cat-name { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:400; letter-spacing:.5px; color:var(--cream); }
+.cat-name { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:600; letter-spacing:.5px; color:#1a0f00; }
 .cat-count { font-size:11px; color:var(--muted); letter-spacing:1px; }
 .cat-actions { display:flex; gap:6px; align-items:center; }
 .cat-action-btn {
@@ -186,9 +187,9 @@ h1 em { font-style:italic; color:var(--gold); }
 .drag-handle:active { cursor:grabbing; }
 
 .piece-info { flex:1; display:flex; align-items:baseline; gap:10px; min-width:0; }
-.piece-title { font-size:15.5px; font-weight:300; color:var(--cream); letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.piece-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:17px; }
-.piece-composer { font-size:12px; color:var(--muted); white-space:nowrap; font-family:'Cormorant Garamond',serif; font-style:italic; flex-shrink:0; }
+.piece-title { font-size:15.5px; font-weight:500; color:#1a0f00; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.piece-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:17px; font-weight:500; }
+.piece-composer { font-size:12.5px; color:#6b4c2a; white-space:nowrap; font-family:'Cormorant Garamond',serif; font-style:italic; flex-shrink:0; font-weight:500; }
 .status-badge {
   font-size:10px; letter-spacing:1.5px; padding:3px 9px; border-radius:2px;
   font-weight:400; white-space:nowrap; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
@@ -263,6 +264,56 @@ h1 em { font-style:italic; color:var(--gold); }
 .score-open-btn:disabled, .score-open-btn.disabled { opacity:.3; pointer-events:none; }
 .score-hint {
   font-size:11px; color:var(--muted); margin-top:5px; line-height:1.5;
+}
+
+/* ── 셋리스트 카테고리 표시 ── */
+.cat-setlist-badge {
+  font-size:9.5px; padding:1px 6px; border-radius:8px;
+  background:rgba(138,109,62,.12); color:var(--gold);
+  border:1px solid rgba(138,109,62,.3); letter-spacing:.5px;
+  font-family:'Noto Sans KR',sans-serif;
+}
+
+/* ── 셋리스트 픽커 모달 ── */
+.setlist-picker-modal .modal { max-width:520px; max-height:85vh; }
+
+.setlist-picker-search {
+  width:100%; background:#fff; border:1px solid var(--border); color:var(--cream);
+  padding:8px 12px 8px 32px; font-size:13px; font-family:'Noto Sans KR',sans-serif;
+  outline:none; border-radius:2px; transition:border-color .2s; margin-bottom:12px;
+}
+.setlist-picker-search:focus { border-color:var(--gold); }
+.setlist-picker-search::placeholder { color:var(--muted); }
+.setlist-picker-search-wrap { position:relative; }
+.setlist-picker-search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:13px; }
+
+.setlist-cat-group { margin-bottom:10px; }
+.setlist-cat-label {
+  font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  color:var(--muted); padding:4px 0; margin-bottom:4px;
+  border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px;
+}
+.setlist-item {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 4px; border-bottom:1px solid rgba(180,155,110,.3);
+  cursor:pointer; transition:background .12s; border-radius:2px;
+}
+.setlist-item:hover { background:rgba(138,109,62,.06); }
+.setlist-item:last-child { border-bottom:none; }
+.setlist-check {
+  width:17px; height:17px; border:1.5px solid var(--border); border-radius:3px;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  transition:all .15s; background:#fff;
+}
+.setlist-check.checked { background:var(--gold); border-color:var(--gold); color:#fff; font-size:11px; }
+.setlist-item-title { font-size:14px; color:#1a0f00; font-weight:500; flex:1; }
+.setlist-item-title.italic { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:15px; }
+.setlist-item-composer { font-size:11.5px; color:#6b4c2a; font-family:'Cormorant Garamond',serif; font-style:italic; }
+.setlist-item-status { font-size:10px; color:var(--muted); padding:1px 6px; border:1px solid var(--border); border-radius:8px; }
+.setlist-item.already-in { opacity:.4; cursor:not-allowed; }
+.setlist-selected-count {
+  font-size:12px; color:var(--gold); font-weight:500; padding:8px 0 4px;
+  border-top:1px solid var(--border); margin-top:8px;
 }
 
 /* ── MODALS ── */
@@ -859,7 +910,7 @@ h1 em { font-style:italic; color:var(--gold); }
     <div class="modal-title" style="margin-bottom:18px">카테고리 추가</div>
     <div class="form-row">
       <label class="form-label">카테고리 이름 *</label>
-      <input class="form-input" id="newCatName" type="text" placeholder="예: 바로크, 현대음악...">
+      <input class="form-input" id="newCatName" type="text" placeholder="예: 바로크, 월례발표회...">
     </div>
     <div class="form-row">
       <label class="form-label">아이콘 (이모지)</label>
@@ -868,11 +919,41 @@ h1 em { font-style:italic; color:var(--gold); }
         <input class="form-input" id="newCatIcon" type="text" placeholder="이모지 입력 (예: 🎼 🌙 ✨)" maxlength="4" oninput="updateIconPreview(this.value)" value="🎼">
       </div>
     </div>
+    <div class="form-row">
+      <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="newCatSetlist" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer">
+        <span>셋리스트 모드 — 기존 곡에서 골라서 담기</span>
+      </label>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px;padding-left:25px;line-height:1.5">
+        월례발표회, 정기연주회 등 기존 레퍼토리에서<br>곡을 선택해 구성하는 카테고리입니다.
+      </div>
+    </div>
     <div class="modal-footer" style="margin-top:14px">
       <div></div>
       <div class="footer-right">
         <button class="btn-ghost" onclick="closeAddCatModal()">취소</button>
         <button class="btn-primary" onclick="saveNewCat()">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 셋리스트 곡 선택 모달 ══ -->
+<div class="modal-overlay setlist-picker-modal" id="setlistPickerModal" onclick="if(event.target===this)closeSetlistPicker()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" style="margin-bottom:4px">🎵 곡 선택</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="setlistPickerCatName"></div>
+    <div class="setlist-picker-search-wrap">
+      <span class="setlist-picker-search-icon">⌕</span>
+      <input class="setlist-picker-search" type="text" placeholder="곡명 또는 작곡자 검색..." oninput="renderSetlistPicker(this.value)" id="setlistPickerSearch">
+    </div>
+    <div id="setlistPickerList" style="max-height:380px;overflow-y:auto"></div>
+    <div class="setlist-selected-count" id="setlistSelectedCount"></div>
+    <div class="modal-footer" style="margin-top:12px">
+      <div></div>
+      <div class="footer-right">
+        <button class="btn-ghost" onclick="closeSetlistPicker()">취소</button>
+        <button class="btn-primary" onclick="saveSetlistPicker()">추가</button>
       </div>
     </div>
   </div>
@@ -1390,9 +1471,20 @@ function updateScoreOpenBtn(url) {
 
 /* ══════════════ ADD PIECE ══════════════ */
 function openAddPieceModal(presetCatId) {
+  // 셋리스트 카테고리면 픽커 모달 열기
+  const cat = getCatById(presetCatId);
+  if (cat && cat.isSetlist) { openSetlistPicker(presetCatId); return; }
+
   const sel=document.getElementById('newPieceCat');sel.innerHTML='';
-  categories.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.icon} ${c.name}`;if(c.id===presetCatId)o.selected=true;sel.appendChild(o);});
-  document.getElementById('newPieceTitle').value='';document.getElementById('newPieceComposer').value='';document.getElementById('newPieceStatus').value='암보';
+  categories.filter(c=>!c.isSetlist).forEach(c=>{
+    const o=document.createElement('option');o.value=c.id;
+    o.textContent=`${c.icon} ${c.name}`;
+    if(c.id===presetCatId)o.selected=true;
+    sel.appendChild(o);
+  });
+  document.getElementById('newPieceTitle').value='';
+  document.getElementById('newPieceComposer').value='';
+  document.getElementById('newPieceStatus').value='암보';
   document.getElementById('addPieceModal').classList.add('open');
   setTimeout(()=>document.getElementById('newPieceTitle').focus(),50);
 }
@@ -1411,17 +1503,111 @@ function saveNewPiece() {
 
 /* ══════════════ ADD CATEGORY ══════════════ */
 function openAddCatModal(){
-  document.getElementById('newCatName').value='';document.getElementById('newCatIcon').value='🎼';document.getElementById('iconPreview').textContent='🎼';
-  document.getElementById('addCatModal').classList.add('open');setTimeout(()=>document.getElementById('newCatName').focus(),50);
+  document.getElementById('newCatName').value='';
+  document.getElementById('newCatIcon').value='🎼';
+  document.getElementById('iconPreview').textContent='🎼';
+  document.getElementById('newCatSetlist').checked=false;
+  document.getElementById('addCatModal').classList.add('open');
+  setTimeout(()=>document.getElementById('newCatName').focus(),50);
 }
 function closeAddCatModal(){document.getElementById('addCatModal').classList.remove('open');}
 function updateIconPreview(val){document.getElementById('iconPreview').textContent=val||'🎼';}
 function saveNewCat(){
-  const name=document.getElementById('newCatName').value.trim();const icon=document.getElementById('newCatIcon').value.trim()||'🎼';
+  const name=document.getElementById('newCatName').value.trim();
+  const icon=document.getElementById('newCatIcon').value.trim()||'🎼';
+  const isSetlist=document.getElementById('newCatSetlist').checked;
   if(!name){const el=document.getElementById('newCatName');el.classList.add('error');setTimeout(()=>el.classList.remove('error'),1500);return;}
-  categories.push({id:'cat_'+Date.now(),name,icon,pieces:[]});
-  saveAll();closeAddCatModal();render();showToast(`"${name}" 카테고리 추가됨`);
+  categories.push({id:'cat_'+Date.now(),name,icon,pieces:[],isSetlist});
+  saveAll();closeAddCatModal();render();
+  showToast(`"${name}" ${isSetlist?'셋리스트 ':''}카테고리 추가됨`);
 }
+
+/* ══════════════ SETLIST PICKER ══════════════ */
+let setlistPickerCatId=null;
+let setlistPickerSelected=new Set();
+
+function openSetlistPicker(catId){
+  setlistPickerCatId=catId;
+  const cat=getCatById(catId);
+  setlistPickerSelected=new Set();
+  document.getElementById('setlistPickerCatName').textContent=`${cat.icon} ${cat.name}에 담을 곡 선택`;
+  document.getElementById('setlistPickerSearch').value='';
+  renderSetlistPicker('');
+  document.getElementById('setlistPickerModal').classList.add('open');
+}
+
+function closeSetlistPicker(){
+  document.getElementById('setlistPickerModal').classList.remove('open');
+  setlistPickerCatId=null; setlistPickerSelected=new Set();
+}
+
+function renderSetlistPicker(search=''){
+  const list=document.getElementById('setlistPickerList');
+  const cat=getCatById(setlistPickerCatId);
+  const alreadyIn=new Set((cat?.pieces||[]).map(p=>p.title));
+  list.innerHTML='';
+  const srcCats=categories.filter(c=>!c.isSetlist);
+  let totalShown=0;
+
+  srcCats.forEach(srcCat=>{
+    const filtered=srcCat.pieces.filter(p=>{
+      if(!search)return true;
+      return p.title.toLowerCase().includes(search.toLowerCase())||
+             (p.composer||'').toLowerCase().includes(search.toLowerCase());
+    });
+    if(!filtered.length)return;
+
+    const group=document.createElement('div');
+    group.className='setlist-cat-group';
+    group.innerHTML=`<div class="setlist-cat-label"><span>${srcCat.icon}</span>${srcCat.name}</div>`;
+
+    filtered.forEach(p=>{
+      const inSet=alreadyIn.has(p.title);
+      const checked=setlistPickerSelected.has(p.title);
+      const d=getPieceData(p.title);
+      const isItalic=/[a-zA-Z]/.test(p.title[0]);
+      const item=document.createElement('div');
+      item.className=`setlist-item${inSet?' already-in':''}`;
+      item.innerHTML=`
+        <div class="setlist-check${checked?' checked':''}">${checked?'✓':''}</div>
+        <div style="flex:1;min-width:0">
+          <span class="setlist-item-title${isItalic?' italic':''}">${p.title}</span>
+          ${p.composer?`<span class="setlist-item-composer"> — ${p.composer}</span>`:''}
+        </div>
+        <span class="setlist-item-status">${d.status}</span>
+        ${inSet?`<span style="font-size:10px;color:var(--muted)">이미 추가됨</span>`:''}`;
+      if(!inSet){
+        item.onclick=()=>{
+          if(setlistPickerSelected.has(p.title))setlistPickerSelected.delete(p.title);
+          else setlistPickerSelected.add(p.title);
+          renderSetlistPicker(document.getElementById('setlistPickerSearch').value);
+        };
+      }
+      group.appendChild(item); totalShown++;
+    });
+    list.appendChild(group);
+  });
+
+  if(!totalShown) list.innerHTML='<div class="empty-state" style="padding:30px">검색 결과가 없습니다</div>';
+  const count=document.getElementById('setlistSelectedCount');
+  count.textContent=setlistPickerSelected.size>0?`${setlistPickerSelected.size}곡 선택됨`:'';
+}
+
+function saveSetlistPicker(){
+  if(!setlistPickerCatId||setlistPickerSelected.size===0){showToast('곡을 선택해주세요');return;}
+  const cat=getCatById(setlistPickerCatId);
+  const alreadyIn=new Set(cat.pieces.map(p=>p.title));
+  let added=0;
+  setlistPickerSelected.forEach(title=>{
+    if(alreadyIn.has(title))return;
+    const meta=getPieceMeta(title);
+    cat.pieces.push({title,composer:meta?.composer||''});
+    added++;
+  });
+  saveAll();closeSetlistPicker();render();
+  showToast(`${added}곡이 추가됐습니다`);
+}
+
 
 /* ══════════════ DELETE ══════════════ */
 function confirmDeletePiece(){if(!editingPiece)return;openConfirm(`<strong>${editingPiece}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>{deletePiece(editingPiece);closeModal();});}
@@ -1807,6 +1993,7 @@ function switchTab(tab){
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('confirmOverlay').classList.contains('open'))closeConfirm();
+    else if(document.getElementById('setlistPickerModal').classList.contains('open'))closeSetlistPicker();
     else if(document.getElementById('gistModal').classList.contains('open'))closeGistModal();
     else if(document.getElementById('addCatModal').classList.contains('open'))closeAddCatModal();
     else if(document.getElementById('addPieceModal').classList.contains('open'))closeAddModal();
