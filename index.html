@@ -1185,7 +1185,9 @@ function renderCategories() {
     const filtered=cat.pieces.filter(p=>{
       const d=getPieceData(p.title);
       const mf=currentFilter==='all'||d.status===currentFilter;
-      const ms=!currentSearch||p.title.toLowerCase().includes(currentSearch.toLowerCase())||(p.composer||'').toLowerCase().includes(currentSearch.toLowerCase());
+      const norm = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const q = norm(currentSearch);
+      const ms=!currentSearch|| norm(p.title).includes(q) || norm(p.composer||'').includes(q);
       return mf&&ms;
     });
     // 필터/검색 중에 결과 없으면 건너뜀
@@ -1549,11 +1551,15 @@ function renderSetlistPicker(search=''){
   const srcCats=categories.filter(c=>!c.isSetlist);
   let totalShown=0;
 
+  // 악센트/특수문자 정규화 함수 (Tárrega → Tarrega 등)
+  const norm = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const q = norm(search);
+
   srcCats.forEach(srcCat=>{
     const filtered=srcCat.pieces.filter(p=>{
       if(!search)return true;
-      return p.title.toLowerCase().includes(search.toLowerCase())||
-             (p.composer||'').toLowerCase().includes(search.toLowerCase());
+      return norm(p.title).includes(q) ||
+             norm(p.composer||'').includes(q);
     });
     if(!filtered.length)return;
 
