@@ -2055,11 +2055,12 @@ function scheduleGistUpload() {
   gistUploadTimer = setTimeout(uploadToGist, 1500); // 1.5초 디바운스 — 연속 변경 시 한번만 업로드
 }
 
-async function uploadToGist() {
-  if (!isGistConnected() || gistSyncing) return;
+async function uploadToGist(force=false) {
+  if (!isGistConnected() || (gistSyncing && !force)) return;
   gistSyncing = true;
   setSyncStatus('syncing', 'Gist에 업로드 중...');
   try {
+    const payload = JSON.stringify({categories,state},null,2);
     const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
       method: 'PATCH',
       headers: {
@@ -2068,10 +2069,12 @@ async function uploadToGist() {
         'Content-Type':'application/json'
       },
       body: JSON.stringify({
-        files: { [GIST_FILENAME]: { content: JSON.stringify({categories,state},null,2) } }
+        files: { [GIST_FILENAME]: { content: payload } }
       })
     });
     if (!res.ok) throw new Error(`업로드 실패 (${res.status})`);
+    // localStorage도 최신 상태로 갱신
+    try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
     localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
     setSyncStatus('synced', '✓ 마지막 동기화: ' + new Date().toLocaleTimeString('ko-KR'));
   } catch (err) {
@@ -2095,10 +2098,28 @@ async function syncFromGistOnLoad() {
     if (file && file.content) {
       const remote = JSON.parse(file.content);
       if (remote.categories && remote.state) {
+
+        // ── 스마트 병합: 로컬에만 있는 scoreLink 등 필드를 Gist 데이터에 합칩니다 ──
+        // 로컬 state.pieces의 각 곡별 데이터를 원격과 병합
+        Object.entries(state.pieces || {}).forEach(([title, localPiece]) => {
+          if (remote.state.pieces[title]) {
+            // 원격에 없는 필드는 로컬 값으로 채움 (scoreLink, memo 등)
+            if (localPiece.scoreLink && !remote.state.pieces[title].scoreLink) {
+              remote.state.pieces[title].scoreLink = localPiece.scoreLink;
+            }
+            if (localPiece.memo && !remote.state.pieces[title].memo) {
+              remote.state.pieces[title].memo = localPiece.memo;
+            }
+          }
+        });
+
         categories = remote.categories;
         state = remote.state;
         try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
         render();
+
+        // 병합된 데이터를 바로 Gist에도 다시 올려서 동기화
+        await uploadToGist(true);
       }
     }
     localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
