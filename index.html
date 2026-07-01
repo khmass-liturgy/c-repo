@@ -775,7 +775,7 @@ h1 em { font-style:italic; color:var(--gold); }
       <button class="filter-btn" onclick="setFilter('연습중',this)">연습중</button>
       <button class="filter-btn" onclick="setFilter('완성',this)">완성</button>
       <button class="filter-btn" onclick="setFilter('공연가능',this)">공연가능</button>
-      <button class="btn-add-piece" onclick="openAddPieceModal(null)">＋ 곡 추가</button>
+      <button class="btn-add-piece" onclick="openAddPieceModal(currentCatTab!=='all'?currentCatTab:null)">＋ 곡 추가</button>
       <div class="search-wrap">
         <span class="search-icon">⌕</span>
         <input class="search-input" type="text" placeholder="곡 / 작곡자 검색..." oninput="doSearch(this.value)">
@@ -1168,6 +1168,11 @@ function renderCategories() {
   container.innerHTML='';
   let hasAny=false;
   const canReorder = currentFilter==='all' && !currentSearch && currentCatTab==='all';
+
+  // 안전장치: 선택된 탭 카테고리가 더 이상 존재하지 않으면 전체로 복귀
+  if (currentCatTab !== 'all' && !categories.some(c=>c.id===currentCatTab)) {
+    currentCatTab = 'all';
+  }
 
   // 카테고리 탭 필터: 특정 탭 선택 시 해당 카테고리만
   const catsToShow = currentCatTab==='all'
@@ -1615,7 +1620,11 @@ function deletePiece(title){categories.forEach(c=>{c.pieces=c.pieces.filter(p=>p
 function confirmDeleteCat(catId){
   const cat=getCatById(catId);if(!cat)return;
   openConfirm(`카테고리 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>포함된 ${cat.pieces.length}개 곡도 모두 삭제됩니다.`,()=>{
-    cat.pieces.forEach(p=>delete state.pieces[p.title]);categories=categories.filter(c=>c.id!==catId);saveAll();render();showToast('카테고리가 삭제되었습니다');
+    cat.pieces.forEach(p=>delete state.pieces[p.title]);
+    categories=categories.filter(c=>c.id!==catId);
+    // 삭제한 카테고리가 현재 선택된 탭이었다면 전체 탭으로 복귀
+    if(currentCatTab===catId) currentCatTab='all';
+    saveAll();render();showToast('카테고리가 삭제되었습니다');
   });
 }
 
