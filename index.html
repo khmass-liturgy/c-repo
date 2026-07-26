@@ -1117,7 +1117,7 @@ const INITIAL_CATEGORIES = [
 let categories, state;
 let currentFilter='all', currentSearch='';
 let currentCatTab='all'; // 현재 선택된 카테고리 탭 ID
-let editingPiece=null, tempPerformances=[], currentFreq=2;
+let editingPiece=null, editingPieceCatId=null, tempPerformances=[], currentFreq=2;
 let confirmCallback=null;
 let dragState=null; // { catId, title } — 드래그 중인 곡 추적
 
@@ -1316,7 +1316,7 @@ function renderCategories() {
       item.style.setProperty('--print-dot',dotColor);
       item.dataset.title = p.title;
       item.dataset.catId = cat.id;
-      item.onclick=(e)=>{ if(!e.target.closest('.reorder-controls,.drag-handle')) openModal(p.title,cat.name); };
+      item.onclick=(e)=>{ if(!e.target.closest('.reorder-controls,.drag-handle')) openModal(p.title,cat.name,cat.id); };
       const checks = Array(7).fill('<span class="piece-check-box"></span>').join('');
 
       const isFirst = idx===0, isLast = idx===pieceArr.length-1;
@@ -1347,7 +1347,7 @@ function renderCategories() {
          Testament d'Amelia 처럼 작은따옴표가 들어간 제목에서 속성이 깨져 버튼이 눌리지 않았음) */
       item.querySelector('.status-badge').addEventListener('click', e => cycleStatus(e, p.title));
       item.querySelector('.record-btn').addEventListener('click', e => quickPlay(e, p.title));
-      item.querySelector('.piece-del-btn').addEventListener('click', e => confirmDeletePieceInline(e, p.title));
+      item.querySelector('.piece-del-btn').addEventListener('click', e => confirmDeletePieceInline(e, p.title, cat.id));
       const upBtn = item.querySelector('.move-up-btn');
       if (upBtn) upBtn.addEventListener('click', e => movePiece(e, cat.id, p.title, -1));
       const downBtn = item.querySelector('.move-down-btn');
@@ -1475,8 +1475,9 @@ function reorderPiece(catId, draggedTitle, targetTitle, insertBefore) {
 }
 
 /* ══════════════ PIECE MODAL ══════════════ */
-function openModal(title,catName) {
+function openModal(title,catName,catId) {
   editingPiece=title;
+  editingPieceCatId=catId;
   const d=getPieceData(title);
   const meta=getPieceMeta(title);
   tempPerformances=JSON.parse(JSON.stringify(d.performances||[]));
@@ -1717,13 +1718,42 @@ function saveSetlistPicker(){
 
 
 /* ══════════════ DELETE ══════════════ */
-function confirmDeletePiece(){if(!editingPiece)return;openConfirm(`<strong>${editingPiece}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>{deletePiece(editingPiece);closeModal();});}
-function confirmDeletePieceInline(e,title){e.stopPropagation();openConfirm(`<strong>${title}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>deletePiece(title));}
+function confirmDeletePiece(){
+  if(!editingPiece)return;
+  const cat=getCatById(editingPieceCatId);
+  if (cat && cat.isSetlist) {
+    openConfirm(`<strong>${editingPiece}</strong>을(를) "${cat.name}" 목록에서 빼시겠어요?<br>원래 카테고리의 곡과 공연 이력은 그대로 유지됩니다.`,
+      ()=>{ removeFromSetlist(cat.id,editingPiece); closeModal(); });
+    return;
+  }
+  openConfirm(`<strong>${editingPiece}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>{deletePiece(editingPiece);closeModal();});
+}
+function confirmDeletePieceInline(e,title,catId){
+  e.stopPropagation();
+  const cat=getCatById(catId);
+  if (cat && cat.isSetlist) {
+    openConfirm(`<strong>${title}</strong>을(를) "${cat.name}" 목록에서 빼시겠어요?<br>원래 카테고리의 곡과 공연 이력은 그대로 유지됩니다.`,
+      ()=>removeFromSetlist(cat.id,title));
+    return;
+  }
+  openConfirm(`<strong>${title}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>deletePiece(title));
+}
+/* 셋리스트(월례발표회 등)에서는 실제 곡을 지우지 않고, 그 목록에서만 빼준다 */
+function removeFromSetlist(catId,title){
+  const cat=getCatById(catId);
+  if(!cat) return;
+  cat.pieces=cat.pieces.filter(p=>p.title!==title);
+  saveAll(); render();
+  showToast('목록에서 뺐습니다');
+}
 function deletePiece(title){categories.forEach(c=>{c.pieces=c.pieces.filter(p=>p.title!==title);});delete state.pieces[title];saveAll();render();showToast('삭제되었습니다');}
 function confirmDeleteCat(catId){
   const cat=getCatById(catId);if(!cat)return;
-  openConfirm(`카테고리 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>포함된 ${cat.pieces.length}개 곡도 모두 삭제됩니다.`,()=>{
-    cat.pieces.forEach(p=>delete state.pieces[p.title]);
+  const msg = cat.isSetlist
+    ? `셋리스트 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>이 목록만 삭제되며, 곡 자체와 원래 카테고리는 그대로 유지됩니다.`
+    : `카테고리 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>포함된 ${cat.pieces.length}개 곡도 모두 삭제됩니다.`;
+  openConfirm(msg,()=>{
+    if (!cat.isSetlist) cat.pieces.forEach(p=>delete state.pieces[p.title]);
     categories=categories.filter(c=>c.id!==catId);
     // 삭제한 카테고리가 현재 선택된 탭이었다면 전체 탭으로 복귀
     if(currentCatTab===catId) currentCatTab='all';
