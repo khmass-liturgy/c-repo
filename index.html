@@ -524,12 +524,32 @@ h1 em { font-style:italic; color:var(--gold); }
 /* ── MISC ── */
 .empty-state { text-align:center; padding:60px 20px; color:var(--muted); font-size:16px; letter-spacing:1px; line-height:1.8; }
 .practice-banner {
-  background:rgba(192,57,43,.06); border:1px solid rgba(192,57,43,.15); border-radius:4px;
-  padding:12px 16px; margin-bottom:22px; display:flex; align-items:center; gap:12px;
+  background:rgba(138,109,62,.07); border:1px solid rgba(138,109,62,.22); border-radius:4px;
+  padding:12px 16px; margin-bottom:22px;
   font-size:15px; color:var(--cream);
 }
 .banner-text { flex:1; line-height:1.5; }
-.banner-pieces { color:var(--amber); font-style:italic; font-family:'Noto Serif KR',serif; font-size:15px; }
+.rotation-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; letter-spacing:.5px; }
+.rotation-list { display:flex; flex-direction:column; }
+.rotation-row {
+  display:flex; align-items:center; gap:10px;
+  padding:7px 0; border-top:1px solid rgba(138,109,62,.15);
+}
+.rotation-row:first-child { border-top:none; }
+.rotation-title { font-weight:600; font-size:15.5px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rotation-meta { font-size:13px; color:var(--muted); white-space:nowrap; }
+.rotation-more { font-size:13px; color:var(--muted); padding-top:6px; }
+
+/* ── 로테이션 목표(주당 연습 횟수) 스테퍼 ── */
+.freq-stepper { display:flex; align-items:center; gap:14px; }
+.freq-btn {
+  width:30px; height:30px; border:1px solid var(--border); background:transparent;
+  color:var(--gold); border-radius:50%; cursor:pointer; font-size:16px; line-height:1;
+  display:flex; align-items:center; justify-content:center; transition:all .15s;
+}
+.freq-btn:hover { border-color:var(--gold); background:rgba(138,109,62,.1); }
+.freq-val { font-size:15.5px; font-weight:600; min-width:64px; text-align:center; }
+.freq-hint { font-size:13px; color:var(--muted); margin-top:6px; }
 
 /* ── CONFIRM ── */
 .confirm-overlay {
@@ -718,8 +738,17 @@ h1 em { font-style:italic; color:var(--gold); }
   .search-wrap { margin-left:0; width:100%; }
   .search-input { width:100%; }
   .header-stats { gap:18px; }
-  .piece-item { padding-left:18px; }
+  .piece-item { padding-left:18px; flex-wrap:wrap; row-gap:7px; padding-top:10px; padding-bottom:10px; }
   .piece-composer { display:none; }
+  /* 곡명이 잘리지 않도록 제목을 자기 줄에 전체 너비로 표시하고,
+     상태뱃지/날짜/재생버튼은 아래 줄로 내림 */
+  .piece-info { flex:1 1 100%; order:1; min-width:100%; }
+  .piece-title { white-space:normal; overflow:visible; text-overflow:clip; }
+  .score-btn { order:2; }
+  .status-badge { order:3; }
+  .last-played { order:4; margin-left:auto; min-width:0; }
+  .record-btn { order:5; }
+  .piece-del-btn { order:6; }
 }
 </style>
 </head>
@@ -753,11 +782,11 @@ h1 em { font-style:italic; color:var(--gold); }
   </header>
 
   <div id="practiceBanner" class="practice-banner" style="display:none">
-    <span style="font-size:16px">⚠</span>
-    <div class="banner-text">
-      오래 연주하지 않은 곡이 있어요:<br>
-      <span class="banner-pieces" id="bannerPieces"></span>
+    <div class="rotation-head">
+      <span style="font-size:16px">🔄</span>
+      <span class="banner-text">오늘의 연습 로테이션</span>
     </div>
+    <div class="rotation-list" id="rotationList"></div>
   </div>
 
   <div class="tab-bar">
@@ -816,6 +845,15 @@ h1 em { font-style:italic; color:var(--gold); }
     <div class="modal-section">
       <span class="modal-label">연주 완성도</span>
       <div class="status-options" id="statusOptions"></div>
+    </div>
+    <div class="modal-section">
+      <span class="modal-label">로테이션 목표</span>
+      <div class="freq-stepper">
+        <button type="button" class="freq-btn" onclick="adjustFreq(-1)">−</button>
+        <span class="freq-val" id="freqVal">주 2회</span>
+        <button type="button" class="freq-btn" onclick="adjustFreq(1)">＋</button>
+      </div>
+      <div class="freq-hint" id="freqHint"></div>
     </div>
     <div class="modal-section">
       <span class="modal-label">공연 이력</span>
@@ -1079,7 +1117,7 @@ const INITIAL_CATEGORIES = [
 let categories, state;
 let currentFilter='all', currentSearch='';
 let currentCatTab='all'; // 현재 선택된 카테고리 탭 ID
-let editingPiece=null, tempPerformances=[];
+let editingPiece=null, tempPerformances=[], currentFreq=2;
 let confirmCallback=null;
 let dragState=null; // { catId, title } — 드래그 중인 곡 추적
 
@@ -1104,6 +1142,17 @@ function getPieceData(title) {
   if (!state.pieces[title]) state.pieces[title]={status:'암보',performances:[],memo:'',lastPlayed:null};
   return state.pieces[title];
 }
+
+/* ══════════════ 연습 로테이션 (Practice Rotation) ══════════════
+   실제 콘서트/공연 기타리스트들이 쓰는 레퍼토리 유지 전략 참고:
+   - 상태가 불안정한(암보/연습중) 곡일수록 자주, 완성/공연가능처럼
+     안정된 곡은 며칠~1주 간격으로 "로테이션"하며 감을 유지
+   - 곡마다 "주당 목표 횟수"를 매겨 최근 연주일과 비교해
+     오늘 쳐야 할 곡을 자동으로 추려줌 */
+const DEFAULT_FREQ_BY_STATUS = {'암보':6, '연습중':4, '완성':2, '공연가능':2};
+function getPieceFreq(d) { return d.freq || DEFAULT_FREQ_BY_STATUS[d.status] || 2; }
+function freqToInterval(freq) { return Math.max(1, Math.round(7/freq)); }
+function getPieceInterval(d) { return freqToInterval(getPieceFreq(d)); }
 function getCatById(id) { return categories.find(c=>c.id===id); }
 function getPieceMeta(title) {
   for (const cat of categories) { const p=cat.pieces.find(p=>p.title===title); if(p) return{...p,catId:cat.id,catName:cat.name}; }
@@ -1122,14 +1171,37 @@ function renderStats() {
 }
 
 function renderPracticeBanner() {
-  const stale=[];
+  const due=[];
   Object.entries(state.pieces).forEach(([t,d])=>{
-    if ((d.status==='공연가능'||d.status==='완성')&&d.lastPlayed)
-      if ((Date.now()-new Date(d.lastPlayed).getTime())>14*86400000) stale.push(t);
+    const interval=getPieceInterval(d);
+    const daysSince=d.lastPlayed ? Math.floor((Date.now()-new Date(d.lastPlayed).getTime())/86400000) : 999;
+    const ratio=daysSince/interval;
+    if (ratio>=1) due.push({title:t, daysSince, interval, ratio});
   });
+  due.sort((a,b)=>b.ratio-a.ratio);
+
   const b=document.getElementById('practiceBanner');
-  b.style.display=stale.length?'flex':'none';
-  if(stale.length) document.getElementById('bannerPieces').textContent=stale.slice(0,3).join(', ')+(stale.length>3?` 외 ${stale.length-3}곡`:'');
+  const list=document.getElementById('rotationList');
+  if (!due.length) { b.style.display='none'; return; }
+  b.style.display='block';
+  list.innerHTML='';
+  due.slice(0,6).forEach(item=>{
+    const dLabel = item.daysSince>=999 ? '기록없음' : (item.daysSince===0?'오늘':`${item.daysSince}일 전`);
+    const row=document.createElement('div');
+    row.className='rotation-row';
+    row.innerHTML=`
+      <span class="rotation-title">${item.title}</span>
+      <span class="rotation-meta">${dLabel} · ${item.interval}일마다 목표</span>
+      <button class="record-btn" title="오늘 연주">▶</button>`;
+    row.querySelector('.record-btn').addEventListener('click', e=>quickPlay(e,item.title));
+    list.appendChild(row);
+  });
+  if (due.length>6) {
+    const more=document.createElement('div');
+    more.className='rotation-more';
+    more.textContent=`외 ${due.length-6}곡 더 있어요`;
+    list.appendChild(more);
+  }
 }
 
 const DOT_COLOR={'암보':'#e85d4a','연습중':'#d4833a','완성':'#7cb87a','공연가능':'#c9a96e'};
@@ -1251,8 +1323,8 @@ function renderCategories() {
       const reorderHtml = canReorder ? `
         <span class="drag-handle" draggable="true" title="드래그해서 순서 변경">⠿</span>
         <span class="reorder-controls">
-          <button class="reorder-btn" onclick="movePiece(event,'${cat.id}','${p.title}',-1)" ${isFirst?'disabled':''} title="위로">▲</button>
-          <button class="reorder-btn" onclick="movePiece(event,'${cat.id}','${p.title}',1)" ${isLast?'disabled':''} title="아래로">▼</button>
+          <button class="reorder-btn move-up-btn" ${isFirst?'disabled':''} title="위로">▲</button>
+          <button class="reorder-btn move-down-btn" ${isLast?'disabled':''} title="아래로">▼</button>
         </span>` : '';
 
       item.innerHTML=`
@@ -1265,10 +1337,21 @@ function renderCategories() {
           ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
         </div>
         <span class="piece-checks">${checks}</span>
-        <button class="status-badge status-${d.status}" onclick="cycleStatus(event,'${p.title}')">${d.status}</button>
+        <button class="status-badge status-${d.status}">${d.status}</button>
         <span class="last-played ${lpCls}">${lpStr}</span>
-        <button class="record-btn" onclick="quickPlay(event,'${p.title}')" title="오늘 연주">▶</button>
-        <button class="piece-del-btn" onclick="confirmDeletePieceInline(event,'${p.title}')" title="삭제">✕</button>`;
+        <button class="record-btn" title="오늘 연주">▶</button>
+        <button class="piece-del-btn" title="삭제">✕</button>`;
+
+      /* 곡명에 어퍼스트로피(') 등이 포함되어도 안전하도록 inline onclick 문자열 대신
+         addEventListener + 클로저로 title을 직접 전달 (기존에는 onclick="...('${p.title}')" 형태라
+         Testament d'Amelia 처럼 작은따옴표가 들어간 제목에서 속성이 깨져 버튼이 눌리지 않았음) */
+      item.querySelector('.status-badge').addEventListener('click', e => cycleStatus(e, p.title));
+      item.querySelector('.record-btn').addEventListener('click', e => quickPlay(e, p.title));
+      item.querySelector('.piece-del-btn').addEventListener('click', e => confirmDeletePieceInline(e, p.title));
+      const upBtn = item.querySelector('.move-up-btn');
+      if (upBtn) upBtn.addEventListener('click', e => movePiece(e, cat.id, p.title, -1));
+      const downBtn = item.querySelector('.move-down-btn');
+      if (downBtn) downBtn.addEventListener('click', e => movePiece(e, cat.id, p.title, 1));
 
       if (canReorder) {
         const handle = item.querySelector('.drag-handle');
@@ -1418,7 +1501,18 @@ function openModal(title,catName) {
   scoreLinkInput.oninput = () => updateScoreOpenBtn(scoreLinkInput.value.trim());
   calInitToday();
   document.getElementById('perfVenue').value='';
+  currentFreq=getPieceFreq(d);
+  updateFreqDisplay();
   document.getElementById('modal').classList.add('open');
+}
+
+function updateFreqDisplay() {
+  document.getElementById('freqVal').textContent=`주 ${currentFreq}회`;
+  document.getElementById('freqHint').textContent=`약 ${freqToInterval(currentFreq)}일마다 연습하면 로테이션이 유지돼요`;
+}
+function adjustFreq(delta) {
+  currentFreq=Math.min(7,Math.max(1,currentFreq+delta));
+  updateFreqDisplay();
 }
 
 function renderPerfList() {
@@ -1454,6 +1548,7 @@ function saveModal() {
   if(tempPerformances.length)d.lastPlayed=[...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date))[0].date;
   d.memo=document.getElementById('memoInput').value;
   d.scoreLink=document.getElementById('scoreLinkInput').value.trim();
+  d.freq=currentFreq;
   if(newTitle!==editingPiece){
     if(categories.some(c=>c.pieces.some(p=>p.title===newTitle&&p.title!==editingPiece))){showToast('같은 이름의 곡이 이미 있습니다');return;}
     state.pieces[newTitle]=state.pieces[editingPiece];delete state.pieces[editingPiece];
