@@ -250,6 +250,13 @@ h1 em { font-style:italic; color:var(--gold); }
 /* 악보 링크 있는 곡명 → 금색 */
 .piece-title.has-score { color:var(--gold) !important; }
 
+/* ── 메모 아이콘 (목록에서 메모 있는 곡 표시) ── */
+.memo-icon {
+  font-size:13px; opacity:.75; flex-shrink:0; cursor:default;
+  display:inline-flex; align-items:center;
+}
+.memo-icon:hover { opacity:1; }
+
 /* ── 모달 내 악보 링크 영역 ── */
 .score-link-row {
   display:flex; gap:8px; align-items:center;
@@ -371,8 +378,9 @@ h1 em { font-style:italic; color:var(--gold); }
 .btn-add:hover { background:rgba(138,109,62,.22); }
 .memo-input {
   width:100%; background:#fff; border:1px solid var(--border); color:var(--cream);
-  padding:10px 12px; font-size:15px; font-family:'Noto Sans KR',sans-serif; font-weight:400;
-  outline:none; border-radius:2px; resize:vertical; min-height:68px; transition:border-color .2s;
+  padding:12px 14px; font-size:15.5px; line-height:1.7; font-family:'Noto Sans KR',sans-serif; font-weight:400;
+  outline:none; border-radius:2px; resize:none; min-height:90px; overflow:hidden;
+  transition:border-color .2s;
 }
 .memo-input:focus { border-color:var(--gold); }
 
@@ -616,7 +624,7 @@ h1 em { font-style:italic; color:var(--gold); }
 
   /* ── 화면 전용 요소 숨김 ── */
   body::before, .header-actions, .controls, .tab-bar, .cat-tab-bar,
-  .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn,
+  .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn, .memo-icon,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast,
   .reorder-controls, .drag-handle, .sync-status-text,
   #performancesView { display:none !important; }
@@ -752,6 +760,7 @@ h1 em { font-style:italic; color:var(--gold); }
   .piece-info { flex:1 1 100%; order:1; min-width:100%; }
   .piece-title { white-space:normal; overflow:visible; text-overflow:clip; }
   .score-btn { order:2; }
+  .memo-icon { order:2; }
   .status-badge { order:3; }
   .last-played { order:4; margin-left:auto; min-width:0; }
   .record-btn { order:5; }
@@ -1150,6 +1159,13 @@ function getPieceData(title) {
   return state.pieces[title];
 }
 
+/* 메모 textarea가 내용 길이에 맞춰 자동으로 늘어나도록 (내부 스크롤 없이,
+   모달 전체가 스크롤되어 장문의 곡 설명도 편하게 보고 편집 가능) */
+function autoGrowTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
 /* ══════════════ 연습 로테이션 (Practice Rotation) ══════════════
    실제 콘서트/공연 기타리스트들이 쓰는 레퍼토리 유지 전략 참고:
    - 상태가 불안정한(암보/연습중) 곡일수록 자주, 완성/공연가능처럼
@@ -1341,6 +1357,9 @@ function renderCategories() {
           ${d.scoreLink
             ? `<a class="score-btn has-link" href="${d.scoreLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄 악보</a>`
             : ''}
+          ${d.memo?.trim()
+            ? `<span class="memo-icon" title="메모: ${d.memo.trim().slice(0,80).replace(/"/g,'&quot;')}${d.memo.trim().length>80?'…':''}">📝</span>`
+            : ''}
           ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
         </div>
         <span class="piece-checks">${checks}</span>
@@ -1500,7 +1519,10 @@ function openModal(title,catName,catId) {
     opts.appendChild(b);
   });
   renderPerfList();
-  document.getElementById('memoInput').value=d.memo||'';
+  const memoEl = document.getElementById('memoInput');
+  memoEl.value = d.memo||'';
+  memoEl.oninput = () => autoGrowTextarea(memoEl);
+  autoGrowTextarea(memoEl);
   // 악보 링크 초기화
   const scoreLinkInput = document.getElementById('scoreLinkInput');
   const scoreOpenBtn   = document.getElementById('scoreOpenBtn');
