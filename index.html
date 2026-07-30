@@ -151,6 +151,12 @@ h1 em { font-style:italic; color:var(--gold); }
 .category-section.collapsed .category-body { grid-template-rows:0fr; }
 .category-body-inner { overflow:hidden; }
 .piece-list { padding:4px 0 8px; }
+.cat-duration-footer {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:9px 18px; border-top:1px solid var(--border);
+  font-size:13px; color:var(--muted); letter-spacing:.3px;
+}
+.cat-duration-total { color:var(--gold); font-weight:600; }
 
 /* ── PIECE ROW ── */
 .piece-item {
@@ -1373,7 +1379,7 @@ function renderCategories() {
         <div class="cat-click-area" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">
           <span class="cat-icon">${cat.icon}</span>
           <span class="cat-name">${cat.name}</span>
-          <span class="cat-count">${filtered.length}곡${cat.isSetlist ? sumCatDurationLabel(filtered) : ''}</span>
+          <span class="cat-count">${filtered.length}곡</span>
         </div>
         <div class="cat-actions">
           <button class="cat-action-btn" onclick="openAddPieceModal('${cat.id}')" title="곡 추가">＋</button>
@@ -1387,6 +1393,7 @@ function renderCategories() {
       </div>`}
       <div class="category-body"><div class="category-body-inner">
         <div class="piece-list" id="list-${cat.id}"></div>
+        <div class="cat-duration-footer" id="footer-${cat.id}" style="display:none"></div>
       </div></div>`;
     container.appendChild(sec);
 
@@ -1487,6 +1494,16 @@ function renderCategories() {
 
       list.appendChild(item);
     });
+
+    // 카테고리 하단에 곡 총 연주시간 표시
+    const footer = sec.querySelector(`#footer-${cat.id}`);
+    const withDuration = pieceArr.filter(p=>state.pieces[p.title]?.duration!=null);
+    if (withDuration.length) {
+      const total = withDuration.reduce((s,p)=>s+state.pieces[p.title].duration,0);
+      const suffix = withDuration.length<pieceArr.length ? ` (${withDuration.length}/${pieceArr.length}곡 기준)` : '';
+      footer.style.display='flex';
+      footer.innerHTML = `<span>⏱ 총 연주시간</span><span class="cat-duration-total">${formatDuration(total)}${suffix}</span>`;
+    }
   });
 
   if (!hasAny) {
