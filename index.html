@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Classical Guitar Repertory</title>
+<title>나의 클래식 기타 연습실</title>
+<meta name="theme-color" content="#090b0d">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -636,7 +637,7 @@ h1 em { font-style:italic; color:var(--gold); }
 
   /* ── 화면 전용 요소 숨김 ── */
   body::before, .header-actions, .controls, .tab-bar, .cat-tab-bar,
-  .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn, .memo-icon,
+  .practice-view, .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn, .memo-icon,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast, .piece-duration,
   .reorder-controls, .drag-handle, .sync-status-text,
   #performancesView { display:none !important; }
@@ -761,6 +762,153 @@ h1 em { font-style:italic; color:var(--gold); }
   .piece-checks { display:none; }
 }
 
+/* ══════════════════════════════════════════
+   DARK PRACTICE STUDIO
+══════════════════════════════════════════ */
+@media screen {
+  :root {
+    --bg:#090b0d; --bg2:#101418; --bg3:#171c21;
+    --gold:#d7b56d; --gold2:#f0d28d; --amber:#e89a52;
+    --cream:#f3ede2; --muted:#a69d90; --border:#30363c;
+    --red:#ff746c; --orange:#f0a05a; --green:#70d7a2;
+  }
+  html { color-scheme:dark; background:var(--bg); }
+  body {
+    background:#080a0c; color:var(--cream); font-size:16.5px;
+  }
+  body::before {
+    background:
+      radial-gradient(ellipse 70% 45% at 12% -5%,rgba(215,181,109,.12),transparent 64%),
+      radial-gradient(ellipse 55% 55% at 95% 35%,rgba(74,112,99,.08),transparent 62%),
+      linear-gradient(180deg,#0b0e11 0%,#080a0c 55%,#0b0d10 100%);
+  }
+  .app { max-width:1120px; padding-bottom:88px; }
+  header { border-color:rgba(215,181,109,.2); padding-top:38px; }
+  .header-label { color:var(--gold); font-size:12px; letter-spacing:5px; }
+  h1 { color:#faf5eb; letter-spacing:-1.5px; }
+  .hdr-btn, .filter-btn, .btn-add-piece, .tab-btn, .cat-tab { border-radius:8px; }
+  .hdr-btn-ghost { background:rgba(255,255,255,.025); }
+  .hdr-btn-print { background:rgba(112,215,162,.06); }
+  .hdr-btn-gist { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
+  .score-open-btn { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
+  .score-open-btn:hover { background:rgba(139,188,255,.14); }
+  .tab-bar { gap:6px; padding:5px; border:1px solid var(--border); border-radius:12px; background:#0d1114; margin-bottom:24px; }
+  .tab-btn { flex:1; padding:10px 14px; letter-spacing:.2px; }
+  .tab-btn::after { display:none; }
+  .tab-btn.active { background:#1a2025; color:var(--gold2); box-shadow:inset 0 0 0 1px rgba(215,181,109,.2); }
+  .cat-tab { color:#b8aea0; }
+  .cat-tab:hover { color:#fff8ec; }
+  .cat-tab .tab-count { background:#171c21; }
+  .search-input, .score-link-input, .setlist-picker-search, .mini-input,
+  .memo-input, .date-trigger, .form-input, .form-select, .modal-title-input {
+    background:#0d1114; color:var(--cream); border-color:var(--border);
+  }
+  .form-input:focus { background:#10151a; }
+  .form-select option { background:#101418; color:var(--cream); }
+  .icon-preview, .setlist-check { background:#0d1114; }
+  .category-section { background:rgba(14,18,22,.82); border-color:var(--border); border-radius:10px; }
+  .category-header { background:#11161a; }
+  .category-header:hover { background:#171d22; }
+  .cat-name, .piece-title, .setlist-item-title { color:#f4eee4; }
+  .piece-composer, .setlist-item-composer { color:#b9a47f; }
+  .piece-item { border-color:rgba(215,181,109,.12); }
+  .piece-item:hover { background:rgba(215,181,109,.055); }
+  .modal-overlay, .confirm-overlay { background:rgba(0,0,0,.74); }
+  .modal, .confirm-box { background:#101418; border-color:#3b4147; box-shadow:0 24px 80px rgba(0,0,0,.55); }
+  .perf-item { background:#0c1013; }
+  .cal-popup { background:#11161a; box-shadow:0 14px 44px rgba(0,0,0,.55); }
+  .modal-composer-input { background:#16130f; border-color:#554a37; color:#d8c39a; }
+  .toast { background:#1a2025; box-shadow:0 10px 34px rgba(0,0,0,.5); }
+  #gistDiagBox { background:#0a0d0f !important; }
+
+  .practice-view { display:none; }
+  .practice-view.active { display:block; }
+  .practice-lab { display:grid; gap:18px; }
+  .practice-hero {
+    position:relative; overflow:hidden; border:1px solid rgba(215,181,109,.24);
+    border-radius:18px; padding:30px; background:
+      linear-gradient(125deg,rgba(215,181,109,.11),transparent 44%),
+      linear-gradient(160deg,#151a1f,#0e1215 68%);
+  }
+  .practice-hero::after {
+    content:'𝄞'; position:absolute; right:22px; top:-24px; font-family:'Noto Serif KR',serif;
+    font-size:150px; color:rgba(215,181,109,.055); transform:rotate(-8deg); pointer-events:none;
+  }
+  .eyebrow { color:var(--gold); font-size:11px; letter-spacing:3px; text-transform:uppercase; margin-bottom:10px; }
+  .practice-hero h2 { font-family:'Noto Serif KR',serif; font-size:clamp(28px,4vw,43px); line-height:1.18; max-width:760px; letter-spacing:-1px; }
+  .practice-hero h2 span { color:var(--gold2); }
+  .practice-sub { color:var(--muted); line-height:1.75; margin-top:12px; max-width:720px; font-size:14px; }
+  .practice-toolbar { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin-top:24px; position:relative; z-index:1; }
+  .practice-control { display:flex; flex-direction:column; gap:7px; }
+  .practice-control label { font-size:11px; color:var(--muted); letter-spacing:1.2px; }
+  .duration-pills { display:flex; gap:6px; flex-wrap:wrap; }
+  .duration-pill, .goal-select, .timer-btn, .step-check {
+    font-family:'Noto Sans KR',sans-serif; border:1px solid var(--border); background:#0d1114;
+    color:var(--muted); border-radius:9px; cursor:pointer; transition:all .18s;
+  }
+  .duration-pill { padding:8px 12px; font-size:13px; }
+  .duration-pill:hover, .duration-pill.active { border-color:var(--gold); color:var(--gold2); background:rgba(215,181,109,.09); }
+  .goal-select { min-width:160px; padding:8px 34px 8px 12px; color:var(--cream); font-size:13px; }
+  .practice-summary { margin-left:auto; min-width:210px; text-align:right; }
+  .practice-summary strong { display:block; font-family:'Noto Serif KR',serif; color:var(--gold2); font-size:22px; }
+  .practice-summary span { color:var(--muted); font-size:12px; }
+
+  .practice-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,.75fr); gap:18px; align-items:start; }
+  .practice-panel { border:1px solid var(--border); border-radius:14px; background:rgba(15,19,23,.9); overflow:hidden; }
+  .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px 20px 14px; }
+  .panel-kicker { color:var(--gold); font-size:10px; letter-spacing:2.5px; text-transform:uppercase; margin-bottom:5px; }
+  .panel-title { font-family:'Noto Serif KR',serif; font-size:21px; }
+  .panel-note { color:var(--muted); font-size:12px; margin-top:4px; line-height:1.5; }
+  .progress-shell { height:3px; background:#23292e; }
+  .progress-bar { height:100%; width:0; background:linear-gradient(90deg,var(--gold),#f4d995); transition:width .3s; }
+  .practice-steps { padding:4px 14px 14px; }
+  .practice-step { display:grid; grid-template-columns:48px minmax(0,1fr) auto; gap:12px; align-items:center; padding:14px 8px; border-top:1px solid rgba(215,181,109,.1); }
+  .step-time { font-family:'Noto Serif KR',serif; color:var(--gold2); font-size:17px; text-align:center; }
+  .step-time small { display:block; color:var(--muted); font-family:'Noto Sans KR',sans-serif; font-size:9px; letter-spacing:1px; margin-top:2px; }
+  .step-title { font-weight:600; color:#f4eee4; font-size:14px; }
+  .step-detail { color:var(--muted); font-size:12px; line-height:1.6; margin-top:4px; }
+  .step-piece { display:inline-block; color:var(--gold2); background:rgba(215,181,109,.08); border-radius:5px; padding:1px 6px; margin-right:3px; }
+  .step-check { width:30px; height:30px; color:transparent; font-size:15px; }
+  .step-check:hover { border-color:var(--gold); }
+  .practice-step.done { opacity:.54; }
+  .practice-step.done .step-title { text-decoration:line-through; }
+  .practice-step.done .step-check { color:#08100c; border-color:var(--green); background:var(--green); }
+
+  .timer-card { padding:22px; text-align:center; background:linear-gradient(180deg,#151b20,#0e1215); }
+  .timer-label { color:var(--muted); font-size:10px; letter-spacing:2.5px; text-transform:uppercase; }
+  .timer-clock { font-family:'Noto Serif KR',serif; font-variant-numeric:tabular-nums; color:#f5eee1; font-size:52px; line-height:1.1; margin:10px 0 14px; }
+  .timer-actions { display:flex; justify-content:center; gap:8px; }
+  .timer-btn { padding:9px 16px; font-size:13px; }
+  .timer-btn.primary { background:var(--gold); border-color:var(--gold); color:#15100a; font-weight:700; }
+  .timer-btn:hover { transform:translateY(-1px); border-color:var(--gold); color:var(--gold2); }
+  .timer-btn.primary:hover { color:#15100a; background:var(--gold2); }
+  .timer-tip { border-top:1px solid var(--border); padding:16px 18px; color:var(--muted); font-size:12px; line-height:1.65; text-align:left; }
+  .timer-tip strong { color:var(--gold2); }
+  .practice-banner { margin:0; border:none; border-top:1px solid var(--border); border-radius:0; background:#0c1013; padding:16px 18px; }
+
+  .weekly-panel { padding:22px; }
+  .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:7px; margin-top:15px; }
+  .week-day { min-height:112px; border:1px solid var(--border); background:#0d1114; border-radius:10px; padding:10px; }
+  .week-day.today { border-color:var(--gold); background:rgba(215,181,109,.08); box-shadow:inset 0 0 0 1px rgba(215,181,109,.08); }
+  .week-name { color:var(--muted); font-size:10px; letter-spacing:1px; }
+  .week-day.today .week-name { color:var(--gold2); }
+  .week-focus { font-size:13px; font-weight:600; margin-top:9px; line-height:1.35; }
+  .week-detail { color:var(--muted); font-size:10.5px; line-height:1.45; margin-top:6px; }
+
+  .evidence-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-top:15px; }
+  .evidence-card { display:block; text-decoration:none; border:1px solid var(--border); background:#0d1114; border-radius:10px; padding:13px; transition:all .18s; }
+  .evidence-card:hover { border-color:rgba(215,181,109,.55); transform:translateY(-2px); }
+  .evidence-name { color:var(--gold2); font-size:12px; font-weight:600; }
+  .evidence-copy { color:var(--muted); font-size:10.5px; line-height:1.5; margin-top:5px; }
+}
+
+@media (max-width:820px) {
+  .practice-grid { grid-template-columns:1fr; }
+  .week-grid { grid-template-columns:repeat(2,1fr); }
+  .evidence-grid { grid-template-columns:repeat(2,1fr); }
+  .practice-summary { margin-left:0; text-align:left; width:100%; }
+}
+
 @media (max-width:600px) {
   .search-wrap { margin-left:0; width:100%; }
   .search-input { width:100%; }
@@ -778,6 +926,12 @@ h1 em { font-style:italic; color:var(--gold); }
   .piece-duration { order:4; }
   .record-btn { order:5; }
   .piece-del-btn { order:6; }
+  .practice-hero { padding:22px 18px; }
+  .practice-toolbar { align-items:stretch; }
+  .practice-control, .goal-select { width:100%; }
+  .practice-step { grid-template-columns:40px minmax(0,1fr) 30px; gap:8px; }
+  .week-grid, .evidence-grid { grid-template-columns:1fr; }
+  .week-day { min-height:0; }
 }
 </style>
 </head>
@@ -787,8 +941,8 @@ h1 em { font-style:italic; color:var(--gold); }
   <header>
     <div class="header-top">
       <div>
-        <div class="header-label">Classical Guitar</div>
-        <h1>나의 <em>레퍼토리</em></h1>
+        <div class="header-label">Classical Guitar Practice Studio</div>
+        <h1>나의 <em>연습실</em></h1>
       </div>
       <div class="header-actions">
         <button class="hdr-btn hdr-btn-ghost" onclick="openAddCatModal()">＋ 카테고리</button>
@@ -810,20 +964,107 @@ h1 em { font-style:italic; color:var(--gold); }
     <div class="sync-status-text" id="syncStatusText" style="margin-top:8px"></div>
   </header>
 
-  <div id="practiceBanner" class="practice-banner" style="display:none">
-    <div class="rotation-head">
-      <span style="font-size:16px">🔄</span>
-      <span class="banner-text">오늘의 연습 로테이션</span>
-    </div>
-    <div class="rotation-list" id="rotationList"></div>
-  </div>
-
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('repertory')">레퍼토리</button>
+    <button class="tab-btn active" onclick="switchTab('practice')">오늘의 연습</button>
+    <button class="tab-btn" onclick="switchTab('repertory')">레퍼토리</button>
     <button class="tab-btn" onclick="switchTab('performances')">공연 이력</button>
   </div>
 
-  <div id="repertoryView" class="repertory-view active">
+  <div id="practiceView" class="practice-view active">
+    <div class="practice-lab">
+      <section class="practice-hero">
+        <div class="eyebrow">Professional practice, made personal</div>
+        <h2>많이 치는 연습보다<br><span>정확히 남는 연습</span></h2>
+        <p class="practice-sub">현재 레퍼토리의 완성도와 마지막 연주일을 분석해 오늘의 집중곡과 유지곡을 자동으로 고릅니다. 짧은 목표, 느린 정확성, 교차 반복, 모의 연주 순서로 구성했습니다.</p>
+        <div class="practice-toolbar">
+          <div class="practice-control">
+            <label>오늘 가능한 시간</label>
+            <div class="duration-pills" id="durationPills">
+              <button class="duration-pill" data-minutes="30" onclick="setPracticeDuration(30)">30분</button>
+              <button class="duration-pill" data-minutes="45" onclick="setPracticeDuration(45)">45분</button>
+              <button class="duration-pill" data-minutes="60" onclick="setPracticeDuration(60)">60분</button>
+              <button class="duration-pill" data-minutes="90" onclick="setPracticeDuration(90)">90분</button>
+            </div>
+          </div>
+          <div class="practice-control">
+            <label for="practiceGoal">오늘의 우선 목표</label>
+            <select class="goal-select" id="practiceGoal" onchange="setPracticeGoal(this.value)">
+              <option value="balanced">균형 훈련</option>
+              <option value="technique">테크닉 집중</option>
+              <option value="performance">공연 준비</option>
+            </select>
+          </div>
+          <div class="practice-summary">
+            <strong id="practiceHeadline">60분 집중 세션</strong>
+            <span id="practicePersonalNote">레퍼토리를 분석하는 중입니다</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="practice-grid">
+        <section class="practice-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-kicker">Today's score</div>
+              <div class="panel-title">오늘의 맞춤 연습 악보</div>
+              <div class="panel-note">각 단계는 끝냈을 때만 체크하세요. 완벽보다 재현 가능한 정확성이 기준입니다.</div>
+            </div>
+            <div class="panel-note" id="practiceProgressText">0 / 6 완료</div>
+          </div>
+          <div class="progress-shell"><div class="progress-bar" id="practiceProgressBar"></div></div>
+          <div class="practice-steps" id="practiceSteps"></div>
+        </section>
+
+        <aside class="practice-panel">
+          <div class="timer-card">
+            <div class="timer-label">Focus timer</div>
+            <div class="timer-clock" id="practiceClock">60:00</div>
+            <div class="timer-actions">
+              <button class="timer-btn primary" id="timerToggleBtn" onclick="togglePracticeTimer()">세션 시작</button>
+              <button class="timer-btn" onclick="resetPracticeTimer()">초기화</button>
+            </div>
+          </div>
+          <div class="timer-tip" id="timerTip"><strong>오늘의 기준</strong><br>5번의 시도보다 5번의 깨끗한 성공을 남기세요.</div>
+          <div id="practiceBanner" class="practice-banner" style="display:none">
+            <div class="rotation-head">
+              <span>↻</span>
+              <span class="banner-text">오래 쉬었던 곡</span>
+            </div>
+            <div class="rotation-list" id="rotationList"></div>
+          </div>
+        </aside>
+      </div>
+
+      <section class="practice-panel weekly-panel">
+        <div class="panel-kicker">Weekly rhythm</div>
+        <div class="panel-title">지치지 않는 주간 프로그램</div>
+        <div class="panel-note">매일 전부 하지 않고 강조점만 바꿔 장기 기억과 공연 안정성을 함께 만듭니다.</div>
+        <div class="week-grid" id="weekGrid"></div>
+      </section>
+
+      <section class="practice-panel weekly-panel">
+        <div class="panel-kicker">Practice evidence</div>
+        <div class="panel-title">프로 연주자와 음악교육 원칙</div>
+        <div class="panel-note">아래 원칙을 사용자의 레퍼토리 로테이션과 오늘의 타이머 프로그램에 적용했습니다.</div>
+        <div class="evidence-grid">
+          <a class="evidence-card" href="https://www.davidrussellguitar.com/index.php/guitar/tips-for-guitarists" target="_blank" rel="noopener">
+            <div class="evidence-name">David Russell</div><div class="evidence-copy">매일의 꾸준함, 연습표로 여러 곡을 신선하게 유지, 기본 동작 중심 워밍업.</div>
+          </a>
+          <a class="evidence-card" href="https://www.tonebase.co/guitar-blog-posts/classical-guitar-technique" target="_blank" rel="noopener">
+            <div class="evidence-name">Łukasz Kuropaczewski</div><div class="evidence-copy">60 BPM에서 손을 준비한 뒤 한 마디를 5번 정확히 실행하는 프로토콜.</div>
+          </a>
+          <a class="evidence-card" href="https://pulse.berklee.edu/?id=4&amp;lesson=23" target="_blank" rel="noopener">
+            <div class="evidence-name">Berklee PULSE</div><div class="evidence-copy">목표 중심 세션, 실수 없는 편안한 템포, 기록을 통한 다음 연습 연결.</div>
+          </a>
+          <a class="evidence-card" href="https://classicalguitarmagazine.com/uncommon-strategies-tips-to-better-prepare-you-for-performance/" target="_blank" rel="noopener">
+            <div class="evidence-name">Classical Guitar</div><div class="evidence-copy">교차 연습, 녹음하는 모의 공연, 연주 뒤 판단과 기록을 분리.</div>
+          </a>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="repertoryView" class="repertory-view">
     <!-- 카테고리 탭 바 -->
     <div class="cat-tab-bar" id="catTabBar"></div>
 
@@ -1212,6 +1453,11 @@ let currentCatTab='all'; // 현재 선택된 카테고리 탭 ID
 let editingPiece=null, editingPieceCatId=null, tempPerformances=[], currentFreq=2;
 let confirmCallback=null;
 let dragState=null; // { catId, title } — 드래그 중인 곡 추적
+let practiceDuration=parseInt(localStorage.getItem('guitar_practice_duration')||'60',10);
+let practiceGoal=localStorage.getItem('guitar_practice_goal')||'balanced';
+let practiceTimerRemaining=practiceDuration*60;
+let practiceTimerId=null;
+let practiceTimerRunning=false;
 
 function loadAll() {
   try {
@@ -1259,8 +1505,157 @@ function getPieceMeta(title) {
   return null;
 }
 
+/* ══════════════ 맞춤 연습 프로그램 ══════════════ */
+function practiceDateKey() {
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function practiceStorageKey() { return `guitar_practice_checks_${practiceDateKey()}`; }
+function loadPracticeChecks() {
+  try { return JSON.parse(localStorage.getItem(practiceStorageKey())||'{}'); } catch(e) { return {}; }
+}
+function practiceEscape(value) {
+  return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+}
+function getPracticeQueue() {
+  const now=Date.now();
+  return Object.entries(state?.pieces||{}).map(([title,d])=>{
+    const interval=getPieceInterval(d);
+    const daysSince=d.lastPlayed ? Math.max(0,Math.floor((now-new Date(d.lastPlayed).getTime())/86400000)) : 999;
+    const statusWeight={'암보':2.4,'연습중':2,'완성':.7,'공연가능':.45}[d.status]||1;
+    const urgency=(daysSince>=999?8:daysSince/interval)+statusWeight;
+    return {title,d,meta:getPieceMeta(title),daysSince,interval,urgency};
+  }).sort((a,b)=>b.urgency-a.urgency);
+}
+function pickPracticePieces(queue) {
+  const focus=queue.find(x=>x.d.status==='암보'||x.d.status==='연습중')||queue[0]||null;
+  const maintenance=queue.find(x=>x!==focus&&(x.d.status==='완성'||x.d.status==='공연가능'))||queue.find(x=>x!==focus)||focus;
+  const secondary=queue.find(x=>x!==focus&&x!==maintenance)||maintenance||focus;
+  return {focus,maintenance,secondary};
+}
+function techniqueForPiece(piece) {
+  if(!piece) return '오른손 i-m 교대와 왼손 최소 압력을 60 BPM에서 확인';
+  const title=piece.title.toLowerCase();
+  const cat=(piece.meta?.catName||'').toLowerCase();
+  if(/recuerdos|sueño|floresta|트레몰로/.test(title)) return '트레몰로 p-a-m-i: 베이스 뒤 세 음의 음량을 같게, 60 BPM에서 5회';
+  if(/bach|bwv/.test(title)||/bach/.test(cat)) return '성부 분리와 베이스 소음 차단: 각 성부를 따로 노래한 뒤 합치기';
+  if(/asturias|sevilla|catedral/.test(title)) return '아르페지오와 포지션 이동: 착지점을 먼저 준비하고 힘을 뺀 채 연결';
+  if(/waltz|왈츠|lágrima|adelita|marieta/.test(title)) return '3박의 호흡과 멜로디 돌출: 반주를 작게, 프레이즈 끝까지 노래하기';
+  return '음계 i-m 교대와 왼손 슬러: 좋은 음색을 유지하는 가장 느린 템포부터';
+}
+function allocatePracticeMinutes(total,goal) {
+  const weights={
+    balanced:[.10,.18,.34,.18,.15,.05],
+    technique:[.10,.30,.30,.15,.10,.05],
+    performance:[.08,.12,.24,.12,.39,.05]
+  }[goal]||[.10,.18,.34,.18,.15,.05];
+  const parts=weights.map(w=>Math.max(1,Math.floor(total*w)));
+  const diff=total-parts.reduce((a,b)=>a+b,0);
+  parts[2]+=diff;
+  return parts;
+}
+function buildPracticeSteps() {
+  const queue=getPracticeQueue();
+  const {focus,maintenance,secondary}=pickPracticePieces(queue);
+  const mins=allocatePracticeMinutes(practiceDuration,practiceGoal);
+  const focusName=focus?.title||'새 집중곡';
+  const maintenanceName=maintenance?.title||focusName;
+  const secondaryName=secondary?.title||maintenanceName;
+  const performanceDetail=practiceGoal==='performance'
+    ? `<span class="step-piece">${practiceEscape(maintenanceName)}</span> 무정지 녹음. 입장·호흡·첫 음까지 공연처럼 하고 끝난 뒤에만 평가`
+    : `<span class="step-piece">${practiceEscape(maintenanceName)}</span> 처음부터 끝까지 멈추지 않고 한 번 연주·녹음`;
+  return {queue,focus,steps:[
+    {id:'reset',minutes:mins[0],title:'몸과 소리 리셋',detail:'어깨·턱·엄지를 풀고 열린 현으로 음색 확인. 쉬운 슬러와 비브라토로 동작만 깨우기'},
+    {id:'technique',minutes:mins[1],title:'곡에 연결된 테크닉',detail:`<span class="step-piece">${practiceEscape(focusName)}</span> ${practiceEscape(techniqueForPiece(focus))}`},
+    {id:'focus',minutes:mins[2],title:'오늘의 한 문제 해결',detail:`<span class="step-piece">${practiceEscape(focusName)}</span> 어려운 1–2마디를 손 준비 → 60 BPM → 깨끗한 5회. 성공하면 4 BPM만 올리기`},
+    {id:'interleave',minutes:mins[3],title:'교차 반복으로 기억 고정',detail:`<span class="step-piece">${practiceEscape(focusName)}</span><span class="step-piece">${practiceEscape(secondaryName)}</span> 각 2–5분씩 번갈아 2회. 돌아왔을 때 바로 재현되는지 확인`},
+    {id:'performance',minutes:mins[4],title:'공연 모드 전환',detail:performanceDetail},
+    {id:'journal',minutes:mins[5],title:'기록하고 기타 내려놓기',detail:'잘 된 것 1개 · 다음 시작점 1개를 메모. 악보 없이 첫 구절과 어려운 구간을 머릿속으로 재생'}
+  ]};
+}
+function renderPracticePlan() {
+  const container=document.getElementById('practiceSteps');
+  if(!container||!state) return;
+  document.querySelectorAll('.duration-pill').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.minutes,10)===practiceDuration));
+  const goalEl=document.getElementById('practiceGoal'); if(goalEl) goalEl.value=practiceGoal;
+  const labels={balanced:'균형',technique:'테크닉',performance:'공연 준비'};
+  document.getElementById('practiceHeadline').textContent=`${practiceDuration}분 ${labels[practiceGoal]} 세션`;
+  const {queue,focus,steps}=buildPracticeSteps();
+  const overdue=queue.filter(x=>x.daysSince>=x.interval).length;
+  document.getElementById('practicePersonalNote').textContent=focus
+    ? `${queue.length}곡 중 ${overdue}곡이 순환 대상 · 오늘의 집중곡: ${focus.title}`
+    : '레퍼토리에 곡을 추가하면 자동으로 맞춤 구성됩니다';
+  const checks=loadPracticeChecks();
+  container.innerHTML=steps.map(step=>`
+    <div class="practice-step${checks[step.id]?' done':''}">
+      <div class="step-time">${step.minutes}<small>MIN</small></div>
+      <div><div class="step-title">${step.title}</div><div class="step-detail">${step.detail}</div></div>
+      <button class="step-check" onclick="togglePracticeStep('${step.id}')" aria-label="${step.title} 완료">✓</button>
+    </div>`).join('');
+  const done=steps.filter(s=>checks[s.id]).length;
+  document.getElementById('practiceProgressText').textContent=`${done} / ${steps.length} 완료`;
+  document.getElementById('practiceProgressBar').style.width=`${Math.round(done/steps.length*100)}%`;
+  const tips={
+    balanced:'5번의 시도보다 <strong>5번의 깨끗한 성공</strong>을 남기세요.',
+    technique:'속도가 무너지면 그것이 오늘의 한계입니다. <strong>통제 가능한 템포</strong>로 즉시 낮추세요.',
+    performance:'연주 중에는 고치지 말고 음악을 전달하세요. <strong>평가는 녹음이 끝난 뒤</strong> 한 번만 합니다.'
+  };
+  document.getElementById('timerTip').innerHTML=`<strong>오늘의 기준</strong><br>${tips[practiceGoal]}`;
+}
+function togglePracticeStep(id) {
+  const checks=loadPracticeChecks(); checks[id]=!checks[id];
+  localStorage.setItem(practiceStorageKey(),JSON.stringify(checks));
+  renderPracticePlan();
+  const total=document.querySelectorAll('.practice-step').length;
+  const done=document.querySelectorAll('.practice-step.done').length;
+  if(total&&done===total) showToast('오늘의 연습을 모두 마쳤습니다');
+}
+function setPracticeDuration(minutes) {
+  practiceDuration=minutes; localStorage.setItem('guitar_practice_duration',String(minutes));
+  resetPracticeTimer(); renderPracticePlan();
+}
+function setPracticeGoal(goal) {
+  practiceGoal=goal; localStorage.setItem('guitar_practice_goal',goal); renderPracticePlan();
+}
+function updatePracticeClock() {
+  const el=document.getElementById('practiceClock'); if(!el) return;
+  const m=Math.floor(practiceTimerRemaining/60), s=practiceTimerRemaining%60;
+  el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function togglePracticeTimer() {
+  const btn=document.getElementById('timerToggleBtn');
+  if(practiceTimerRunning) {
+    clearInterval(practiceTimerId); practiceTimerId=null; practiceTimerRunning=false; btn.textContent='계속하기'; return;
+  }
+  if(practiceTimerRemaining<=0) practiceTimerRemaining=practiceDuration*60;
+  practiceTimerRunning=true; btn.textContent='잠시 멈춤';
+  practiceTimerId=setInterval(()=>{
+    practiceTimerRemaining=Math.max(0,practiceTimerRemaining-1); updatePracticeClock();
+    if(practiceTimerRemaining===0){ clearInterval(practiceTimerId); practiceTimerId=null; practiceTimerRunning=false; btn.textContent='다시 시작'; showToast('집중 세션이 끝났습니다. 기록을 남겨보세요'); }
+  },1000);
+}
+function resetPracticeTimer() {
+  clearInterval(practiceTimerId); practiceTimerId=null; practiceTimerRunning=false;
+  practiceTimerRemaining=practiceDuration*60; updatePracticeClock();
+  const btn=document.getElementById('timerToggleBtn'); if(btn) btn.textContent='세션 시작';
+}
+function renderWeekGrid() {
+  const grid=document.getElementById('weekGrid'); if(!grid) return;
+  const days=[
+    ['월','정확성의 날','60 BPM · 깨끗한 5회'],
+    ['화','집중곡 수리','어려운 1–2마디 깊게'],
+    ['수','기억의 날','악보 없이 · 머릿속 연주'],
+    ['목','음악의 날','음색 · 성부 · 프레이즈'],
+    ['금','무대의 날','무정지 녹음 1회'],
+    ['토','긴 로테이션','오래 쉰 곡 3–5개'],
+    ['일','회복과 듣기','손은 쉬고 다음 주 설계']
+  ];
+  const jsDay=new Date().getDay(); const todayIndex=jsDay===0?6:jsDay-1;
+  grid.innerHTML=days.map((d,i)=>`<div class="week-day${i===todayIndex?' today':''}"><div class="week-name">${d[0]}요일${i===todayIndex?' · TODAY':''}</div><div class="week-focus">${d[1]}</div><div class="week-detail">${d[2]}</div></div>`).join('');
+}
+
 /* ══════════════ RENDER ══════════════ */
-function render() { renderStats(); renderPracticeBanner(); renderCatTabs(); renderCategories(); }
+function render() { renderStats(); renderPracticeBanner(); renderPracticePlan(); renderWeekGrid(); renderCatTabs(); renderCategories(); updatePracticeClock(); }
 
 function renderStats() {
   const all=Object.values(state.pieces);
@@ -1552,12 +1947,12 @@ function cycleStatus(e,title) {
   e.stopPropagation();
   const order=['암보','연습중','완성','공연가능'];
   const d=getPieceData(title); d.status=order[(order.indexOf(d.status)+1)%order.length];
-  saveAll(); renderStats(); renderCategories();
+  saveAll(); renderStats(); renderCategories(); renderPracticePlan();
 }
 function quickPlay(e,title) {
   e.stopPropagation();
   getPieceData(title).lastPlayed=new Date().toISOString().split('T')[0];
-  saveAll(); renderCategories(); renderPracticeBanner();
+  saveAll(); renderCategories(); renderPracticeBanner(); renderPracticePlan();
 }
 
 /* ══════════════ REORDER (순서 변경) ══════════════ */
@@ -2247,7 +2642,8 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 /* ══════════════ TAB ══════════════ */
 function switchTab(tab){
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['repertory','performances'][i]===tab));
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['practice','repertory','performances'][i]===tab));
+  document.getElementById('practiceView').classList.toggle('active',tab==='practice');
   document.getElementById('repertoryView').classList.toggle('active',tab==='repertory');
   document.getElementById('performancesView').classList.toggle('active',tab==='performances');
   if(tab==='performances')renderTimeline();
@@ -2347,7 +2743,7 @@ async function runGistDiag() {
   box.style.display = 'block';
 
   diagLog('=== Gist 진단 시작 ===');
-  diagLog('Token: ' + (gistConfig.token ? gistConfig.token.substring(0,8)+'...' : '없음'));
+  diagLog('Token: ' + (gistConfig.token ? '설정됨' : '없음'));
   diagLog('Gist ID: ' + (gistConfig.gistId || '없음'));
   diagLog('isConnected: ' + isGistConnected());
 
