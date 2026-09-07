@@ -884,6 +884,31 @@ h1 em { font-style:italic; color:var(--gold); }
   .timer-btn.primary:hover { color:#15100a; background:var(--gold2); }
   .timer-tip { border-top:1px solid var(--border); padding:16px 18px; color:var(--muted); font-size:12px; line-height:1.65; text-align:left; }
   .timer-tip strong { color:var(--gold2); }
+  .metronome { border-top:1px solid var(--border); padding:18px; background:#0c1013; }
+  .metronome-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .metronome-title { color:#f4eee4; font-size:13px; font-weight:700; }
+  .metronome-sub { color:var(--muted); font-size:10px; margin-top:3px; }
+  .metronome-running { color:var(--gold2); font-size:10px; letter-spacing:1px; opacity:0; transition:opacity .2s; }
+  .metronome.running .metronome-running { opacity:1; }
+  .metronome-bpm { display:grid; grid-template-columns:34px 1fr 34px; align-items:center; gap:8px; margin-top:14px; }
+  .metro-step, .metro-toggle, .metro-beats {
+    border:1px solid var(--border); background:#12171b; color:var(--cream); font-family:'Noto Sans KR',sans-serif;
+    border-radius:8px; cursor:pointer; transition:all .18s;
+  }
+  .metro-step { width:34px; height:34px; font-size:18px; line-height:1; }
+  .metro-step:hover, .metro-toggle:hover, .metro-beats:hover { border-color:var(--gold); color:var(--gold2); }
+  .metro-readout { display:flex; align-items:baseline; justify-content:center; gap:5px; }
+  .metro-readout strong { color:var(--gold2); font-family:'Noto Serif KR',serif; font-size:28px; font-variant-numeric:tabular-nums; }
+  .metro-readout span { color:var(--muted); font-size:10px; letter-spacing:1px; }
+  .metro-slider { width:100%; accent-color:var(--gold); cursor:pointer; margin:10px 0 0; }
+  .metronome-footer { display:flex; align-items:center; gap:8px; margin-top:13px; }
+  .metro-toggle { flex:1; padding:9px 12px; font-size:12px; font-weight:700; }
+  .metro-toggle.active { background:var(--gold); border-color:var(--gold); color:#171108; }
+  .metro-beats { padding:9px 10px; font-size:11px; }
+  .metro-dots { display:flex; justify-content:center; gap:7px; margin-top:14px; min-height:11px; }
+  .metro-dot { width:8px; height:8px; border-radius:50%; background:#353d43; transition:transform .08s, background .08s, box-shadow .08s; }
+  .metro-dot.accent { background:#5c5140; }
+  .metro-dot.active { background:var(--gold2); transform:scale(1.35); box-shadow:0 0 10px rgba(240,210,141,.7); }
   .practice-banner { margin:0; border:none; border-top:1px solid var(--border); border-radius:0; background:#0c1013; padding:16px 18px; }
 
   .weekly-panel { padding:22px; }
@@ -932,6 +957,8 @@ h1 em { font-style:italic; color:var(--gold); }
   .practice-step { grid-template-columns:40px minmax(0,1fr) 30px; gap:8px; }
   .week-grid, .evidence-grid { grid-template-columns:1fr; }
   .week-day { min-height:0; }
+  .metronome-footer { flex-wrap:wrap; }
+  .metro-toggle { min-width:150px; }
 }
 </style>
 </head>
@@ -1025,6 +1052,28 @@ h1 em { font-style:italic; color:var(--gold); }
             </div>
           </div>
           <div class="timer-tip" id="timerTip"><strong>오늘의 기준</strong><br>5번의 시도보다 5번의 깨끗한 성공을 남기세요.</div>
+          <div class="metronome" id="metronome">
+            <div class="metronome-head">
+              <div>
+                <div class="metronome-title">♩ 메트로놈</div>
+                <div class="metronome-sub">Focus timer와 독립적으로 작동합니다</div>
+              </div>
+              <span class="metronome-running" id="metronomeRunning">● PLAYING</span>
+            </div>
+            <div class="metronome-bpm">
+              <button class="metro-step" type="button" onclick="adjustMetronomeBpm(-1)" aria-label="BPM 1 낮추기">−</button>
+              <div class="metro-readout"><strong id="metronomeBpm">60</strong><span>BPM</span></div>
+              <button class="metro-step" type="button" onclick="adjustMetronomeBpm(1)" aria-label="BPM 1 높이기">＋</button>
+            </div>
+            <input class="metro-slider" id="metronomeSlider" type="range" min="30" max="240" step="1" value="60" oninput="setMetronomeBpm(this.value)" aria-label="메트로놈 BPM">
+            <div class="metronome-footer">
+              <button class="metro-toggle" id="metronomeToggleBtn" type="button" onclick="toggleMetronome()">▶ 메트로놈 시작</button>
+              <select class="metro-beats" id="metronomeBeats" onchange="setMetronomeBeats(this.value)" aria-label="박자 선택">
+                <option value="2">2박</option><option value="3">3박</option><option value="4" selected>4박</option><option value="6">6박</option>
+              </select>
+            </div>
+            <div class="metro-dots" id="metronomeDots" aria-label="현재 박자"></div>
+          </div>
           <div id="practiceBanner" class="practice-banner" style="display:none">
             <div class="rotation-head">
               <span>↻</span>
@@ -1458,6 +1507,9 @@ let practiceGoal=localStorage.getItem('guitar_practice_goal')||'balanced';
 let practiceTimerRemaining=practiceDuration*60;
 let practiceTimerId=null;
 let practiceTimerRunning=false;
+let metronomeBpm=Math.min(240,Math.max(30,parseInt(localStorage.getItem('guitar_metronome_bpm')||'60',10)||60));
+let metronomeBeats=Math.min(6,Math.max(2,parseInt(localStorage.getItem('guitar_metronome_beats')||'4',10)||4));
+let metronomeRunning=false, metronomeTimerId=null, metronomeBeatIndex=0, metronomeAudioContext=null;
 
 function loadAll() {
   try {
@@ -1639,6 +1691,75 @@ function resetPracticeTimer() {
   practiceTimerRemaining=practiceDuration*60; updatePracticeClock();
   const btn=document.getElementById('timerToggleBtn'); if(btn) btn.textContent='세션 시작';
 }
+function updateMetronomeUI() {
+  const bpmEl=document.getElementById('metronomeBpm');
+  const slider=document.getElementById('metronomeSlider');
+  const beats=document.getElementById('metronomeBeats');
+  const toggle=document.getElementById('metronomeToggleBtn');
+  const shell=document.getElementById('metronome');
+  if(!bpmEl||!slider||!beats||!toggle||!shell) return;
+  bpmEl.textContent=metronomeBpm;
+  slider.value=metronomeBpm;
+  beats.value=metronomeBeats;
+  toggle.textContent=metronomeRunning?'■ 메트로놈 정지':'▶ 메트로놈 시작';
+  toggle.classList.toggle('active',metronomeRunning);
+  shell.classList.toggle('running',metronomeRunning);
+  renderMetronomeDots();
+}
+function renderMetronomeDots() {
+  const dots=document.getElementById('metronomeDots'); if(!dots) return;
+  dots.innerHTML=Array.from({length:metronomeBeats},(_,index)=>`<span class="metro-dot${index===0?' accent':''}${metronomeRunning&&index===metronomeBeatIndex?' active':''}"></span>`).join('');
+}
+function setMetronomeBpm(value) {
+  metronomeBpm=Math.min(240,Math.max(30,parseInt(value,10)||60));
+  localStorage.setItem('guitar_metronome_bpm',String(metronomeBpm));
+  if(metronomeRunning) restartMetronome(); else updateMetronomeUI();
+}
+function adjustMetronomeBpm(delta) { setMetronomeBpm(metronomeBpm+delta); }
+function setMetronomeBeats(value) {
+  metronomeBeats=Math.min(6,Math.max(2,parseInt(value,10)||4));
+  metronomeBeatIndex=0;
+  localStorage.setItem('guitar_metronome_beats',String(metronomeBeats));
+  updateMetronomeUI();
+}
+function playMetronomeClick(accent) {
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass) return;
+  if(!metronomeAudioContext) metronomeAudioContext=new AudioContextClass();
+  const context=metronomeAudioContext;
+  const oscillator=context.createOscillator();
+  const gain=context.createGain();
+  oscillator.frequency.value=accent?1100:760;
+  gain.gain.setValueAtTime(.0001,context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(accent?.22:.15,context.currentTime+.004);
+  gain.gain.exponentialRampToValueAtTime(.0001,context.currentTime+.055);
+  oscillator.connect(gain).connect(context.destination);
+  oscillator.start(context.currentTime);
+  oscillator.stop(context.currentTime+.06);
+}
+function metronomeTick() {
+  playMetronomeClick(metronomeBeatIndex===0);
+  renderMetronomeDots();
+  metronomeBeatIndex=(metronomeBeatIndex+1)%metronomeBeats;
+}
+function restartMetronome() {
+  clearInterval(metronomeTimerId);
+  metronomeBeatIndex=0;
+  metronomeTick();
+  metronomeTimerId=setInterval(metronomeTick,60000/metronomeBpm);
+  updateMetronomeUI();
+}
+async function toggleMetronome() {
+  if(metronomeRunning) {
+    clearInterval(metronomeTimerId); metronomeTimerId=null; metronomeRunning=false; metronomeBeatIndex=0; updateMetronomeUI(); return;
+  }
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass) { showToast('이 브라우저는 메트로놈 소리를 지원하지 않습니다'); return; }
+  if(!metronomeAudioContext) metronomeAudioContext=new AudioContextClass();
+  try { await metronomeAudioContext.resume(); } catch(e) {}
+  metronomeRunning=true;
+  restartMetronome();
+}
 function renderWeekGrid() {
   const grid=document.getElementById('weekGrid'); if(!grid) return;
   const days=[
@@ -1655,7 +1776,7 @@ function renderWeekGrid() {
 }
 
 /* ══════════════ RENDER ══════════════ */
-function render() { renderStats(); renderPracticeBanner(); renderPracticePlan(); renderWeekGrid(); renderCatTabs(); renderCategories(); updatePracticeClock(); }
+function render() { renderStats(); renderPracticeBanner(); renderPracticePlan(); renderWeekGrid(); renderCatTabs(); renderCategories(); updatePracticeClock(); updateMetronomeUI(); }
 
 function renderStats() {
   const all=Object.values(state.pieces);
