@@ -41,6 +41,13 @@ function Test-ExcludedPath([string]$RelativePath) {
     $normalized -match '(?i)(credential|secret|service-account).*\.json$'
 }
 
+function Get-RepositoryRelativePath([string]$FullPath) {
+  $basePath = $RepositoryRoot.TrimEnd('\') + '\'
+  $baseUri = [System.Uri]$basePath
+  $pathUri = [System.Uri]$FullPath
+  return [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($pathUri).ToString()).Replace('/', '\')
+}
+
 function Get-ChangedPaths {
   $lines = Invoke-Git @('status', '--porcelain=v1', '--untracked-files=all')
   $paths = New-Object System.Collections.Generic.List[string]
@@ -114,7 +121,7 @@ try {
     if ($event) {
       $changedPath = $event.SourceEventArgs.FullPath
       Remove-Event -EventIdentifier $event.EventIdentifier -ErrorAction SilentlyContinue
-      $relativePath = [System.IO.Path]::GetRelativePath($RepositoryRoot, $changedPath)
+      $relativePath = Get-RepositoryRelativePath $changedPath
       if (-not (Test-ExcludedPath $relativePath)) {
         $pending = $true
         $lastChange = Get-Date
