@@ -1,0 +1,26 @@
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+secrets/
+credentials/
+*credential*.json
+*secret*.json
+*service-account*.json
+
+# Local output and transient files
+*.log
+logs/
+tmp/
+temp/
+node_modules/
+.cache/
+__pycache__/
+.DS_Store
+Thumbs.db
