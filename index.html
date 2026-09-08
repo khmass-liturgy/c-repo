@@ -912,16 +912,6 @@ h1 em { font-style:italic; color:var(--gold); }
   .metro-dot.active { background:var(--gold2); transform:scale(1.35); box-shadow:0 0 10px rgba(240,210,141,.7); }
   .practice-banner { margin:0; border:none; border-top:1px solid var(--border); border-radius:0; background:#0c1013; padding:16px 18px; }
 
-  .research-panel { padding:22px; }
-  .research-grid { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(220px,.7fr); gap:10px; margin-top:15px; }
-  .research-block { border:1px solid var(--border); border-radius:10px; padding:14px; background:#0d1114; }
-  .research-label { color:var(--gold); font-size:10px; letter-spacing:1.8px; text-transform:uppercase; }
-  .research-composer { color:#f4eee4; font-family:'Noto Serif KR',serif; font-size:17px; margin-top:6px; }
-  .research-copy { color:var(--muted); font-size:11.5px; line-height:1.65; margin-top:7px; }
-  .research-list { margin:8px 0 0; padding-left:17px; color:var(--muted); font-size:11.5px; line-height:1.65; }
-  .research-links { display:flex; flex-direction:column; gap:7px; margin-top:9px; }
-  .research-link { display:block; color:var(--gold2); text-decoration:none; border:1px solid rgba(215,181,109,.2); border-radius:7px; padding:8px 9px; font-size:11px; transition:all .18s; }
-  .research-link:hover { border-color:var(--gold); background:rgba(215,181,109,.08); }
 
   .weekly-panel { padding:22px; }
   .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:7px; margin-top:15px; }
@@ -945,7 +935,6 @@ h1 em { font-style:italic; color:var(--gold); }
 
 @media (max-width:820px) {
   .practice-grid { grid-template-columns:1fr; }
-  .research-grid { grid-template-columns:1fr; }
   .week-grid { grid-template-columns:repeat(2,1fr); }
   .evidence-grid { grid-template-columns:repeat(2,1fr); }
   .practice-summary { margin-left:0; text-align:left; width:100%; }
@@ -1100,13 +1089,6 @@ h1 em { font-style:italic; color:var(--gold); }
           </div>
         </aside>
       </div>
-
-      <section class="practice-panel research-panel" aria-labelledby="pieceResearchTitle">
-        <div class="panel-kicker">Piece research desk</div>
-        <div class="panel-title" id="pieceResearchTitle">오늘의 집중곡 자료</div>
-        <div class="panel-note">작곡가·작품 맥락·연습 체크포인트와 신뢰할 수 있는 참고 자료를 함께 확인하세요.</div>
-        <div class="research-grid" id="pieceResearch"></div>
-      </section>
 
       <section class="practice-panel weekly-panel">
         <div class="panel-kicker">Weekly rhythm</div>
@@ -1820,7 +1802,6 @@ function renderPracticePlan() {
   document.getElementById('practicePersonalNote').textContent=focus
     ? `${queue.length}곡 중 ${overdue}곡이 순환 대상 · 오늘의 집중곡: ${focus.title}`
     : '레퍼토리에 곡을 추가하면 자동으로 맞춤 구성됩니다';
-  renderPieceResearch(focus);
   const checks=loadPracticeChecks();
   container.innerHTML=steps.map(step=>`
     <div class="practice-step${checks[step.id]?' done':''}">
