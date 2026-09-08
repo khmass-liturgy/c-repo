@@ -867,6 +867,7 @@ h1 em { font-style:italic; color:var(--gold); }
   .step-time small { display:block; color:var(--muted); font-family:'Noto Sans KR',sans-serif; font-size:9px; letter-spacing:1px; margin-top:2px; }
   .step-title { font-weight:600; color:#f4eee4; font-size:14px; }
   .step-detail { color:var(--muted); font-size:12px; line-height:1.6; margin-top:4px; }
+  .step-caution { display:inline-block; margin-top:4px; color:#c9b98b; }
   .step-piece { display:inline-block; color:var(--gold2); background:rgba(215,181,109,.08); border-radius:5px; padding:1px 6px; margin-right:3px; }
   .step-check { width:30px; height:30px; color:transparent; font-size:15px; }
   .step-check:hover { border-color:var(--gold); }
@@ -1036,7 +1037,7 @@ h1 em { font-style:italic; color:var(--gold); }
               <div class="panel-title">오늘의 맞춤 연습 악보</div>
               <div class="panel-note">각 단계는 끝냈을 때만 체크하세요. 완벽보다 재현 가능한 정확성이 기준입니다.</div>
             </div>
-            <div class="panel-note" id="practiceProgressText">0 / 6 완료</div>
+            <div class="panel-note" id="practiceProgressText">0 / 4 완료</div>
           </div>
           <div class="progress-shell"><div class="progress-bar" id="practiceProgressBar"></div></div>
           <div class="practice-steps" id="practiceSteps"></div>
@@ -1218,8 +1219,8 @@ h1 em { font-style:italic; color:var(--gold); }
       <div class="score-hint">구글 드라이브 파일 → 우클릭 → 공유 → 링크 복사</div>
     </div>
     <div class="modal-section">
-      <span class="modal-label">메모</span>
-      <textarea class="memo-input" id="memoInput" placeholder="연습 포인트, 특이사항 등..."></textarea>
+      <span class="modal-label">곡별 주의 포인트 · 메모</span>
+      <textarea class="memo-input" id="memoInput" placeholder="곡별 주의 포인트와 개인 연습 메모를 적어두세요..."></textarea>
     </div>
     <div class="modal-footer">
       <button class="btn-danger" onclick="confirmDeletePiece()">곡 삭제</button>
@@ -1465,6 +1466,43 @@ const DEFAULT_DURATIONS = {
   '고향의 봄': 120,
   'Venezuelan Waltz 1·2·3': 360,   // Lauro 왈츠 3곡 모음, 약 6:00
 };
+
+/* 곡별 기본 주의 포인트. 기존에 작성한 메모가 비어 있을 때에만 기록합니다.
+   판본·편곡이 다른 곡은 실제 악보의 운지와 아티큘레이션을 우선하세요. */
+const PIECE_PRACTICE_NOTES = {
+  'Prelude BWV 998':'성부를 따로 노래한 뒤 합치고, 다음 화성에서 불필요하게 남는 저음은 조용히 소거하세요.',
+  'Love Waltz':'3박의 흐름을 밀지 말고, 멜로디가 반주보다 한 겹 앞에서 들리는지 녹음으로 확인하세요.',
+  'Liebeslied':'포지션 이동 직전의 음을 끝까지 유지하고, 비브라토는 중요한 도착음에만 써서 선율을 살리세요.',
+  'Verde Alma':'편곡에서 가장 중요한 성부를 먼저 정하고, 베이스가 멜로디를 덮지 않도록 반주 음량을 낮추세요.',
+  'Melodia Noite':'느린 프레이즈에서 박을 늘이지 말고, 음과 음 사이의 침묵도 메트로놈 안에서 유지하세요.',
+  'El Delirio':'빠른 패시지는 힘으로 밀지 말고 왼손 착지와 오른손 준비를 분리해 연습한 뒤 합치세요.',
+  "Testament d'Amelia":'개방현의 잔향이 화성을 흐리지 않게 필요한 곳만 남기고, 선율의 호흡은 끊기지 않게 연결하세요.',
+  '카바티나':'고음 멜로디의 길이와 음색을 끝까지 지키고, 반주는 한 단계 더 작게 연주하세요.',
+  'Romance':'아르페지오의 박을 고르게 유지하며, 선율음이 패턴에 묻히지 않는지 귀로 분리해 들으세요.',
+  'My Way / Love Story':'프레이즈 끝의 호흡과 다음 포지션을 미리 준비하고, 베이스와 노래 선율의 균형을 녹음으로 확인하세요.',
+  'Over the Rainbow':'큰 도약 전에 왼손의 목표 자리를 먼저 준비하고, 긴 멜로디 음이 짧아지지 않게 들으세요.',
+  'Moon River':'느린 템포에서도 박의 중심을 잃지 말고, 코드 교체 중에도 멜로디가 끊기지 않게 하세요.',
+  '씨네마 천국':'반복되는 주제의 음색과 다이내믹을 통일하고, 넓은 이동은 목적 음을 먼저 소리 내어 확인하세요.',
+  '타레가 로망스':'반주 아르페지오는 작고 일정하게, 고음 멜로디는 프레이즈 끝까지 같은 호흡으로 이어가세요.',
+  'La Lágrima':'A–B–A의 분위기 대비를 분명히 하고, 이동 전 마지막 음의 길이가 사라지지 않게 하세요.',
+  'Adelita':'춤 리듬의 첫 박을 과하게 누르지 말고, 짧은 반주 위에 멜로디가 자연스럽게 떠오르게 하세요.',
+  'Marieta':'왈츠의 3박 흐름을 고르게 유지하며, 포지션 이동 뒤 첫 멜로디 음의 음색을 먼저 확인하세요.',
+  'Recuerdos de la Alhambra':'p-a-m-i 트레몰로는 빠르기보다 균일한 음량과 지속되는 멜로디가 우선이며, 베이스 박을 따로 지키세요.',
+  'Se Ela Perguntar':'브라질 리듬의 당김을 흐리지 말고, 베이스 펄스와 코드 반주의 길이를 분리해 연습하세요.',
+  'Un Día de Noviembre':'반복 화성 속에서도 선율의 긴 호흡을 유지하고, 감정 표현 때문에 기본 박이 늦어지지 않게 하세요.',
+  'La Negra':'리듬형과 저음의 펄스를 먼저 고정한 뒤 멜로디를 얹고, 편곡별 아티큘레이션 표기를 우선하세요.',
+  'Venezuelan Waltz 1·2·3':'각 왈츠의 3박 흐름과 당김을 먼저 말로 세고, 멜로디보다 큰 저음이 나오지 않게 조절하세요.',
+  'Un Sueño en la Floresta':'트레몰로의 선율·베이스를 독립시키고, 넓은 왼손 스트레치와 긴 프레이즈는 느린 연결부터 만드세요.',
+  'Julia Florida':'칸타빌레 선율을 끝까지 유지하고, 바레와 이동 뒤에도 반주 음량이 커지지 않게 하세요.',
+  'La Catedral 1·2·3':'세 악장의 성격을 구분하고, 빠른 악장의 아르페지오는 목표 포지션을 먼저 준비해 긴장을 줄이세요.',
+  'El Último Temblor':'화성 변화의 박을 먼저 확정한 뒤 세부 음을 채우고, 빠른 연결에서 왼손 힘이 쌓이지 않게 하세요.',
+  'Asturias':'반복 아르페지오의 리듬을 고정하고, 도약과 바레는 소리보다 먼저 손 모양을 준비하세요.',
+  'Serenata Española':'춤 리듬의 악센트를 일정하게 유지하고, 짧은 음과 긴 선율의 대비를 과장하지 않게 조절하세요.',
+  'Sevilla':'리듬의 추진력을 잃지 않되 속도로 몰아가지 말고, 포지션 이동 뒤 첫 박이 흔들리지 않게 하세요.',
+  'Wind Song':'편곡 악보에서 선율·베이스·내성을 표시한 뒤, 선율이 반주에 묻히지 않는지 녹음으로 확인하세요.',
+  'Tango in Ski':'탱고의 저음 펄스와 당김 리듬을 분리해 연습하고, 강세가 매번 같은 자리에서 들리는지 확인하세요.',
+  '고향의 봄':'노래하듯 긴 프레이즈를 만들고, 가사 호흡을 떠올리며 프레이즈 끝의 음을 짧게 끊지 마세요.',
+};
 function formatDuration(sec) {
   if (sec==null || isNaN(sec)) return '';
   sec=Math.max(0,Math.round(sec));
@@ -1494,6 +1532,17 @@ function fillDefaultDurations() {
   });
   if (changed) { try { localStorage.setItem('guitar_repertory_v4',JSON.stringify({categories,state})); } catch(e){} }
 }
+function seedPracticeNotes() {
+  if (!state?.pieces) return false;
+  let changed=false;
+  Object.entries(state.pieces).forEach(([title,d])=>{
+    if (!String(d.memo||'').trim() && PIECE_PRACTICE_NOTES[title]) {
+      d.memo=PIECE_PRACTICE_NOTES[title];
+      changed=true;
+    }
+  });
+  return changed;
+}
 
 /* ══════════════ STATE ══════════════ */
 let categories, state;
@@ -1514,12 +1563,12 @@ let metronomeRunning=false, metronomeTimerId=null, metronomeBeatIndex=0, metrono
 function loadAll() {
   try {
     const saved=localStorage.getItem('guitar_repertory_v4');
-    if (saved) { const p=JSON.parse(saved); categories=p.categories; state=p.state; fillDefaultDurations(); return; }
+    if (saved) { const p=JSON.parse(saved); categories=p.categories; state=p.state; fillDefaultDurations(); if(seedPracticeNotes()) saveAll(); return; }
   } catch(e){}
   categories=JSON.parse(JSON.stringify(INITIAL_CATEGORIES));
   state={pieces:{},collapsed:{}};
   categories.forEach(c=>c.pieces.forEach(p=>{
-    state.pieces[p.title]={status:'암보',performances:[],memo:'',lastPlayed:null,duration:null};
+    state.pieces[p.title]={status:'암보',performances:[],memo:PIECE_PRACTICE_NOTES[p.title]||'',lastPlayed:null,duration:null};
   }));
   fillDefaultDurations();
 }
@@ -1530,7 +1579,7 @@ function saveAll() {
 }
 
 function getPieceData(title) {
-  if (!state.pieces[title]) state.pieces[title]={status:'암보',performances:[],memo:'',lastPlayed:null,duration:null};
+  if (!state.pieces[title]) state.pieces[title]={status:'암보',performances:[],memo:PIECE_PRACTICE_NOTES[title]||'',lastPlayed:null,duration:null};
   return state.pieces[title];
 }
 
@@ -1595,15 +1644,18 @@ function techniqueForPiece(piece) {
   if(/waltz|왈츠|lágrima|adelita|marieta/.test(title)) return '3박의 호흡과 멜로디 돌출: 반주를 작게, 프레이즈 끝까지 노래하기';
   return '음계 i-m 교대와 왼손 슬러: 좋은 음색을 유지하는 가장 느린 템포부터';
 }
+function practiceNoteForPiece(piece) {
+  return PIECE_PRACTICE_NOTES[piece?.title] || '악보에서 선율·베이스·내성의 우선순위를 표시하고, 가장 불안한 1–2마디부터 느리게 확인하세요.';
+}
 function allocatePracticeMinutes(total,goal) {
   const weights={
-    balanced:[.10,.18,.34,.18,.15,.05],
-    technique:[.10,.30,.30,.15,.10,.05],
-    performance:[.08,.12,.24,.12,.39,.05]
-  }[goal]||[.10,.18,.34,.18,.15,.05];
+    balanced:[.25,.39,.20,.16],
+    technique:[.38,.36,.16,.10],
+    performance:[.15,.29,.15,.41]
+  }[goal]||[.25,.39,.20,.16];
   const parts=weights.map(w=>Math.max(1,Math.floor(total*w)));
   const diff=total-parts.reduce((a,b)=>a+b,0);
-  parts[2]+=diff;
+  parts[1]+=diff;
   return parts;
 }
 function buildPracticeSteps() {
@@ -1617,12 +1669,10 @@ function buildPracticeSteps() {
     ? `<span class="step-piece">${practiceEscape(maintenanceName)}</span> 무정지 녹음. 입장·호흡·첫 음까지 공연처럼 하고 끝난 뒤에만 평가`
     : `<span class="step-piece">${practiceEscape(maintenanceName)}</span> 처음부터 끝까지 멈추지 않고 한 번 연주·녹음`;
   return {queue,focus,steps:[
-    {id:'reset',minutes:mins[0],title:'몸과 소리 리셋',detail:'어깨·턱·엄지를 풀고 열린 현으로 음색 확인. 쉬운 슬러와 비브라토로 동작만 깨우기'},
-    {id:'technique',minutes:mins[1],title:'곡에 연결된 테크닉',detail:`<span class="step-piece">${practiceEscape(focusName)}</span> ${practiceEscape(techniqueForPiece(focus))}`},
-    {id:'focus',minutes:mins[2],title:'오늘의 한 문제 해결',detail:`<span class="step-piece">${practiceEscape(focusName)}</span> 어려운 1–2마디를 손 준비 → 60 BPM → 깨끗한 5회. 성공하면 4 BPM만 올리기`},
-    {id:'interleave',minutes:mins[3],title:'교차 반복으로 기억 고정',detail:`<span class="step-piece">${practiceEscape(focusName)}</span><span class="step-piece">${practiceEscape(secondaryName)}</span> 각 2–5분씩 번갈아 2회. 돌아왔을 때 바로 재현되는지 확인`},
-    {id:'performance',minutes:mins[4],title:'공연 모드 전환',detail:performanceDetail},
-    {id:'journal',minutes:mins[5],title:'기록하고 기타 내려놓기',detail:'잘 된 것 1개 · 다음 시작점 1개를 메모. 악보 없이 첫 구절과 어려운 구간을 머릿속으로 재생'}
+    {id:'technique',minutes:mins[0],title:'곡에 연결된 테크닉',detail:`<span class="step-piece">${practiceEscape(focusName)}</span> ${practiceEscape(techniqueForPiece(focus))}`},
+    {id:'focus',minutes:mins[1],title:'오늘의 한 문제 해결',detail:`<span class="step-piece">${practiceEscape(focusName)}</span> 어려운 1–2마디를 손 준비 → 60 BPM → 깨끗한 5회. 성공하면 4 BPM만 올리기<br><span class="step-caution">주의: ${practiceEscape(practiceNoteForPiece(focus))}</span>`},
+    {id:'interleave',minutes:mins[2],title:'교차 반복으로 기억 고정',detail:`<span class="step-piece">${practiceEscape(focusName)}</span><span class="step-piece">${practiceEscape(secondaryName)}</span> 각 2–5분씩 번갈아 2회. 돌아왔을 때 바로 재현되는지 확인`},
+    {id:'performance',minutes:mins[3],title:'공연 모드 전환',detail:performanceDetail}
   ]};
 }
 function renderPracticePlan() {
@@ -2240,7 +2290,7 @@ function saveNewPiece() {
   if(!title){const el=document.getElementById('newPieceTitle');el.classList.add('error');setTimeout(()=>el.classList.remove('error'),1500);return;}
   if(categories.some(c=>c.pieces.some(p=>p.title===title))){showToast('같은 이름의 곡이 이미 있습니다');return;}
   getCatById(catId).pieces.push({title,composer});
-  state.pieces[title]={status,performances:[],memo:'',lastPlayed:null,duration:DEFAULT_DURATIONS[title]??null};
+  state.pieces[title]={status,performances:[],memo:PIECE_PRACTICE_NOTES[title]||'',lastPlayed:null,duration:DEFAULT_DURATIONS[title]??null};
   saveAll();closeAddModal();render();showToast(`"${title}" 추가됨`);
 }
 
@@ -2923,6 +2973,7 @@ async function manualSyncFromGist() {
     categories = remote.categories;
     state = remote.state;
     fillDefaultDurations();
+    seedPracticeNotes();
     try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
     localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
     render();
@@ -2983,6 +3034,7 @@ async function connectGist() {
             categories = remote.categories;
             state = remote.state;
     fillDefaultDurations();
+            seedPracticeNotes();
             try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
             render();
             showToast('Gist에서 데이터를 불러왔습니다');
@@ -3087,6 +3139,7 @@ async function syncFromGistOnLoad() {
         categories = remote.categories;
         state = remote.state;
     fillDefaultDurations();
+        seedPracticeNotes();
         try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
         render();
 
