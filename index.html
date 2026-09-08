@@ -912,6 +912,17 @@ h1 em { font-style:italic; color:var(--gold); }
   .metro-dot.active { background:var(--gold2); transform:scale(1.35); box-shadow:0 0 10px rgba(240,210,141,.7); }
   .practice-banner { margin:0; border:none; border-top:1px solid var(--border); border-radius:0; background:#0c1013; padding:16px 18px; }
 
+  .research-panel { padding:22px; }
+  .research-grid { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(220px,.7fr); gap:10px; margin-top:15px; }
+  .research-block { border:1px solid var(--border); border-radius:10px; padding:14px; background:#0d1114; }
+  .research-label { color:var(--gold); font-size:10px; letter-spacing:1.8px; text-transform:uppercase; }
+  .research-composer { color:#f4eee4; font-family:'Noto Serif KR',serif; font-size:17px; margin-top:6px; }
+  .research-copy { color:var(--muted); font-size:11.5px; line-height:1.65; margin-top:7px; }
+  .research-list { margin:8px 0 0; padding-left:17px; color:var(--muted); font-size:11.5px; line-height:1.65; }
+  .research-links { display:flex; flex-direction:column; gap:7px; margin-top:9px; }
+  .research-link { display:block; color:var(--gold2); text-decoration:none; border:1px solid rgba(215,181,109,.2); border-radius:7px; padding:8px 9px; font-size:11px; transition:all .18s; }
+  .research-link:hover { border-color:var(--gold); background:rgba(215,181,109,.08); }
+
   .weekly-panel { padding:22px; }
   .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:7px; margin-top:15px; }
   .week-day { min-height:112px; border:1px solid var(--border); background:#0d1114; border-radius:10px; padding:10px; }
@@ -930,6 +941,7 @@ h1 em { font-style:italic; color:var(--gold); }
 
 @media (max-width:820px) {
   .practice-grid { grid-template-columns:1fr; }
+  .research-grid { grid-template-columns:1fr; }
   .week-grid { grid-template-columns:repeat(2,1fr); }
   .evidence-grid { grid-template-columns:repeat(2,1fr); }
   .practice-summary { margin-left:0; text-align:left; width:100%; }
@@ -1084,6 +1096,13 @@ h1 em { font-style:italic; color:var(--gold); }
           </div>
         </aside>
       </div>
+
+      <section class="practice-panel research-panel" aria-labelledby="pieceResearchTitle">
+        <div class="panel-kicker">Piece research desk</div>
+        <div class="panel-title" id="pieceResearchTitle">오늘의 집중곡 자료</div>
+        <div class="panel-note">작곡가·작품 맥락·연습 체크포인트와 신뢰할 수 있는 참고 자료를 함께 확인하세요.</div>
+        <div class="research-grid" id="pieceResearch"></div>
+      </section>
 
       <section class="practice-panel weekly-panel">
         <div class="panel-kicker">Weekly rhythm</div>
@@ -1503,6 +1522,56 @@ const PIECE_PRACTICE_NOTES = {
   'Tango in Ski':'탱고의 저음 펄스와 당김 리듬을 분리해 연습하고, 강세가 매번 같은 자리에서 들리는지 확인하세요.',
   '고향의 봄':'노래하듯 긴 프레이즈를 만들고, 가사 호흡을 떠올리며 프레이즈 끝의 음을 짧게 끊지 마세요.',
 };
+
+const CURATED_REFERENCE_LINKS = {
+  general:{label:'클래식 기타 레슨 자료',url:'https://www.thisisclassicalguitar.com/lessons/'},
+  bach:{label:'IMSLP · BWV 998 원전·판본',url:'https://imslp.org/wiki/Prelude%2C_Fugue_and_Allegro_in_E-flat_major%2C_BWV_998_%28Bach%2C_Johann_Sebastian%29'},
+  tarrega:{label:'Tárrega 곡별 악보·레슨',url:'https://www.thisisclassicalguitar.com/francisco-tarrega-free-sheet-music-pdfs/'},
+  recuerdos:{label:'Recuerdos 악보·트레몰로 레슨',url:'https://www.thisisclassicalguitar.com/recuerdos-de-la-alhambra-tarrega-free-pdf/'},
+  barrios:{label:'Barrios 작품·판본 안내',url:'https://www.thisisclassicalguitar.com/complete-guitar-works-barrios-sheet-music/'},
+  sueno:{label:'Un Sueño 작품 해설·연주 자료',url:'https://www.thisisclassicalguitar.com/un-sueno-en-la-floresta-barrios/'},
+  albeniz:{label:'Asturias 악보·레슨',url:'https://www.thisisclassicalguitar.com/asturias-leyenda-albeniz-guitar/'},
+  brouwer:{label:'Leo Brouwer 작품·레슨 목록',url:'https://www.thisisclassicalguitar.com/leo-brouwer-sheet-music-lessons-classical-guitar/'},
+  lauro:{label:'Antonio Lauro 연주 자료',url:'https://www.thisisclassicalguitar.com/adam-kossler-registro-lauro/'},
+  llobet:{label:'Llobet 편곡 레퍼토리 자료',url:'https://www.thisisclassicalguitar.com/spanish-classical-guitar-sheet-music-tab/'},
+};
+
+/* 작품 정보는 확인 가능한 곡명·작곡자에만 특정 정보를 붙입니다.
+   제목이나 편곡자가 비어 있는 항목은 악보 표지 확인을 안내해 추정을 사실처럼 표시하지 않습니다. */
+const PIECE_RESEARCH = {
+  'Prelude BWV 998':{composer:'J. S. Bach (1685–1750)',bio:'독일 바로크의 작곡가. 대위법과 화성 진행을 통해 여러 성부가 동시에 말하게 만드는 음악을 남겼습니다.',description:'E♭장조의 Prelude, Fuga, Allegro로 된 3악장 작품입니다. 현재 목록은 그중 Prelude 기타 편곡을 뜻합니다.',check:['성부별로 음량과 길이를 표시하기','화성이 바뀔 때 남는 저음 소거하기'],links:['bach']},
+  'Liebeslied':{composer:'Fritz Kreisler (1875–1962)',bio:'오스트리아 태생의 바이올리니스트·작곡가. 노래하듯 이어지는 선율과 섬세한 루바토가 특징입니다.',description:'원래 바이올린을 위한 소품으로, 기타 편곡에서는 긴 선율을 반주 위에 자연스럽게 띄우는 것이 핵심입니다.',check:['프레이즈 끝까지 선율 길이 유지','도착음에서만 절제된 비브라토 사용'],links:['general']},
+  "Testament d'Amelia":{composer:'Miguel Llobet (1878–1938) 편곡',bio:'스페인의 기타리스트·작곡가. 카탈루냐 민요를 정교한 화성과 기타적 울림으로 편곡했습니다.',description:'카탈루냐 민요 El Testament d’Amèlia를 바탕으로 한 편곡입니다. 성가 같은 선율과 섬세한 화성 잔향이 공존합니다.',check:['선율과 내성의 우선순위 표시','개방현 잔향은 화성에 맞는 곳만 남기기'],links:['llobet']},
+  '카바티나':{composer:'Stanley Myers (1930–1993)',bio:'영국의 영화음악 작곡가. 간결한 선율을 강한 정서로 만드는 영화음악으로 알려져 있습니다.',description:'영화 《디어 헌터》로 널리 알려진 기타곡입니다. 단순해 보이는 선율 안에서 음색·호흡·레가토의 완성도가 드러납니다.',check:['고음 선율을 끝까지 유지','반주는 멜로디보다 항상 작게'],links:['general']},
+  'Romance':{composer:'Anonymous · 편곡 판본 확인',bio:'이 제목은 여러 작품과 편곡에 쓰입니다. 널리 연주되는 Spanish Romance라면 전통적으로 작곡자 미상으로 취급됩니다.',description:'현재 목록만으로는 정확한 판본을 단정할 수 없습니다. 악보 표지의 원제와 편곡자를 메모에 적어두면 자료를 더 정확히 연결할 수 있습니다.',check:['아르페지오의 박을 일정하게 유지','멜로디와 반주를 따로 녹음해 균형 확인'],links:['general']},
+  'My Way / Love Story':{composer:'편곡 메들리 · 원곡 정보 확인',bio:'두 영화·대중음악을 묶은 기타 편곡으로 보입니다. 실제 작곡자와 구성은 사용 중인 판본에 따라 달라집니다.',description:'노래 선율의 호흡을 살리는 편곡입니다. 각 곡 전환부에서 템포와 음색을 미리 결정해 두세요.',check:['전환 직전과 직후 2마디를 묶어 연습','베이스보다 주선율을 앞에 두기'],links:['general']},
+  'Over the Rainbow':{composer:'Harold Arlen (1905–1986) · lyric: Yip Harburg',bio:'미국 대중음악 작곡가 Harold Arlen의 대표적인 영화 노래입니다.',description:'영화 《오즈의 마법사》를 위해 쓰인 곡입니다. 큰 음정 도약과 긴 호흡이 노래하듯 들려야 합니다.',check:['도약 전 왼손 목표 위치 선준비','긴 음을 박 끝까지 유지'],links:['general']},
+  'Moon River':{composer:'Henry Mancini (1924–1994) · lyric: Johnny Mercer',bio:'미국의 작곡가·지휘자. 섬세한 선율과 세련된 화성의 영화음악으로 유명합니다.',description:'영화 《티파니에서 아침을》의 주제곡입니다. 느긋하게 들리더라도 안쪽 박은 계속 흐르게 해야 합니다.',check:['메트로놈 저속 박 위에서 레가토 확인','코드 교체 중 선율음 길이 유지'],links:['general']},
+  '씨네마 천국':{composer:'Ennio Morricone (1928–2020) · 일부 주제 Andrea Morricone',bio:'이탈리아의 영화음악 작곡가. 서정적인 선율과 극적인 색채를 결합한 수많은 영화음악을 남겼습니다.',description:'영화 《시네마 천국》의 여러 주제를 엮은 기타 편곡입니다. 판본마다 구성과 길이가 달라 반복 주제의 통일이 중요합니다.',check:['반복 주제마다 같은 음색 기준 정하기','넓은 이동 뒤 첫 음을 따로 점검'],links:['general']},
+  '타레가 로망스':{composer:'Francisco Tárrega (1852–1909)',bio:'스페인 기타리스트·작곡가. 현대 클래식 기타의 음색·운지·레퍼토리 형성에 큰 영향을 주었습니다.',description:'현재 목록의 제목은 편곡·선집에 따라 다를 수 있습니다. 타레가 작품 특유의 아르페지오 반주와 칸타빌레 선율을 분리해 들으세요.',check:['반주 아르페지오의 고른 박 유지','선율 프레이즈 끝을 급히 끊지 않기'],links:['tarrega']},
+  'La Lágrima':{composer:'Francisco Tárrega (1852–1909)',bio:'스페인 기타리스트·작곡가이며, 낭만주의 기타 소품의 핵심 레퍼토리를 남겼습니다.',description:'‘눈물’이라는 뜻의 짧은 전주곡입니다. A–B–A 구조의 분위기 대비와 자연스러운 포지션 이동이 핵심입니다.',check:['A와 B의 음색·다이내믹 대비','이동 전 음의 길이 보존'],links:['tarrega']},
+  'Adelita':{composer:'Francisco Tárrega (1852–1909)',bio:'스페인 기타리스트·작곡가이며, 소품 안에 춤 리듬과 노래 선율을 정교하게 결합했습니다.',description:'마주르카 성격의 소품입니다. 3박 리듬의 춤성은 살리되, 첫 박을 무겁게 눌러 선율이 굳지 않게 하세요.',check:['3박의 무게 중심을 가볍게 세기','짧은 반주 위 선율 돌출'],links:['tarrega']},
+  'Marieta':{composer:'Francisco Tárrega (1852–1909)',bio:'스페인 기타리스트·작곡가이며, 기타를 위한 낭만적 소품을 다수 남겼습니다.',description:'마주르카 리듬을 바탕으로 한 곡입니다. 춤의 흔들림보다 안정된 박과 자연스러운 멜로디를 우선하세요.',check:['포지션 이동 뒤 첫 선율음 확인','3박 리듬을 일정하게 유지'],links:['tarrega']},
+  'Recuerdos de la Alhambra':{composer:'Francisco Tárrega (1852–1909)',bio:'스페인 기타리스트·작곡가. 기타 트레몰로 레퍼토리의 표준을 만든 인물로 평가됩니다.',description:'1896년 그라나다에서 쓴 대표적인 트레몰로 작품입니다. 반복되는 고음으로 지속 선율의 환상을 만들고, 베이스가 화성과 박을 지탱합니다.',check:['p-a-m-i의 음량·간격을 균일하게','베이스와 트레몰로를 분리해 연습'],links:['recuerdos','tarrega']},
+  'Se Ela Perguntar':{composer:'Rômulo Jovino',bio:'현재 목록에 기록된 브라질 기타 작곡가·연주자입니다. 사용 중인 판본의 출판 정보도 함께 보관하세요.',description:'브라질적 리듬 감각이 중요한 곡입니다. 당김을 과장하기보다 저음 펄스와 코드 길이를 먼저 안정시키세요.',check:['베이스 펄스만 따로 연습','당김 리듬을 말로 세고 연주'],links:['general']},
+  'Un Día de Noviembre':{composer:'Leo Brouwer (1939–)',bio:'쿠바의 기타리스트·작곡가·지휘자. 전통적 기타 어법과 현대적 음향을 폭넓게 결합했습니다.',description:'1968년의 서정적 기타곡입니다. 얇고 투명한 질감 안에서 선율의 방향과 화성 변화가 섬세하게 들려야 합니다.',check:['느린 프레이즈도 안쪽 박 유지','반복 화성마다 음색 변화 계획'],links:['brouwer']},
+  'La Negra':{composer:'전통곡 또는 편곡 판본 확인',bio:'이 제목은 여러 라틴·멕시코 전통곡 및 기타 편곡에서 사용됩니다.',description:'현재 목록의 제목만으로는 정확한 작품을 특정할 수 없습니다. 악보 표지의 원제·작곡자·편곡자를 등록한 뒤 자료를 연결하세요.',check:['리듬형과 저음 펄스를 먼저 고정','판본의 아티큘레이션 표기 우선'],links:['general']},
+  'Venezuelan Waltz 1·2·3':{composer:'Antonio Lauro (1917–1986)',bio:'베네수엘라의 기타리스트·작곡가. 베네수엘라 왈츠를 클래식 기타 레퍼토리로 확장한 대표 작곡가입니다.',description:'베네수엘라 왈츠 모음으로 보입니다. 3박의 유연한 흐름과 당김을 유지하면서 선율이 베이스 위에 떠야 합니다.',check:['각 왈츠의 리듬형을 따로 말로 세기','저음이 멜로디를 덮지 않게 조절'],links:['lauro']},
+  'Un Sueño en la Floresta':{composer:'Agustín Barrios Mangoré (1885–1944)',bio:'파라과이의 기타리스트·작곡가. 낭만적 선율, 남미 리듬, 고난도 기타 기법을 결합한 작품을 남겼습니다.',description:'긴 트레몰로 선율과 넓은 왼손 스트레치, 독립 성부가 결합된 대작입니다. 빠르기보다 지속되는 선율과 긴 프레이즈 설계가 먼저입니다.',check:['트레몰로 선율과 베이스의 독립','스트레치를 잡기 전에 손 모양 선준비'],links:['sueno','barrios']},
+  'Julia Florida':{composer:'Agustín Barrios Mangoré (1885–1944)',bio:'파라과이의 기타리스트·작곡가이며, 기타를 위한 서정적이고 화려한 작품을 다수 남겼습니다.',description:'섬세한 칸타빌레와 반주의 균형이 필요한 서정 소품입니다. 바레와 이동이 음색 변화를 일으키지 않게 하세요.',check:['선율을 따로 연주해 호흡 확인','바레 뒤 반주 음량 다시 점검'],links:['barrios']},
+  'La Catedral 1·2·3':{composer:'Agustín Barrios Mangoré (1885–1944)',bio:'파라과이의 기타리스트·작곡가. 바로크적 대위법부터 낭만적 서정성까지 넓은 언어를 기타에 담았습니다.',description:'전주·안단테 종교풍·빠른 악장으로 이어지는 3악장 작품입니다. 악장별 성격 대비와 빠른 악장의 아르페지오 안정성이 중요합니다.',check:['악장마다 별도의 템포·음색 목표 설정','빠른 패턴은 목표 포지션을 먼저 준비'],links:['barrios']},
+  'El Último Temblor':{composer:'Agustín Barrios Mangoré (1885–1944)',bio:'파라과이의 기타리스트·작곡가로, 기타의 화려함과 노래하는 선율을 결합했습니다.',description:'현재 연주 판본의 구조와 반복 표기를 먼저 확인하세요. 빠른 연결에서도 화성 변화의 박이 먼저 들리게 만드는 것이 핵심입니다.',check:['화성 변화 지점에 박 표시','왼손 힘이 쌓이면 즉시 템포 낮추기'],links:['barrios']},
+  'Asturias':{composer:'Isaac Albéniz (1860–1909)',bio:'스페인의 피아니스트·작곡가. 스페인 민속적 어법을 피아노 음악에 녹여낸 후기 낭만주의 작곡가입니다.',description:'원래 피아노곡 Asturias (Leyenda)로, 기타를 위해 쓰인 곡은 아니지만 기타 편곡의 대표 레퍼토리가 되었습니다. 안달루시아 풍의 추진력과 중간부의 서정성이 대비됩니다.',check:['반복 리듬을 메트로놈으로 고정','바레·도약 전 손 모양을 먼저 준비'],links:['albeniz']},
+  'Serenata Española':{composer:'Joaquín Malats (1872–1912) · 기타 편곡 Francisco Tárrega',bio:'Malats는 스페인 피아니스트·작곡가이며, 이 곡은 Tárrega의 기타 편곡으로 널리 연주됩니다.',description:'경쾌한 스페인풍 세레나데입니다. 춤 리듬의 악센트와 노래하는 선율의 대비를 명확하게 하세요.',check:['짧은 음과 긴 선율의 대비','강세가 매번 같은 자리에서 들리게'],links:['tarrega']},
+  'Sevilla':{composer:'Isaac Albéniz (1860–1909)',bio:'스페인 민속적 리듬과 색채를 피아노 음악에 담아낸 작곡가입니다.',description:'Suite Española의 Sevilla를 바탕으로 한 기타 편곡입니다. 세비야나스풍 리듬의 추진력을 유지하면서 이동 뒤 첫 박을 안정시켜야 합니다.',check:['리듬의 첫 박을 흔들리지 않게','전환 전 다음 포지션 선준비'],links:['albeniz']},
+  'Tango in Ski':{composer:'제목·판본 확인 필요',bio:'이 표기는 Roland Dyens의 Tango en Skaï와 혼동될 수 있습니다. 악보 표지로 정확한 제목과 작곡자를 확인하세요.',description:'정확한 판본을 확인하기 전에는 리듬·스타일을 단정하지 않습니다. 현재 악보의 박자표와 당김 표기를 우선하세요.',check:['저음 펄스와 당김을 분리해 연습','악보 표지의 제목·작곡자 등록'],links:['general']},
+  'Love Waltz':{composer:'작곡자·편곡자 확인 필요',bio:'현재 레퍼토리 목록의 작곡자 칸이 비어 있습니다. 같은 제목의 왈츠가 여러 곡이므로 악보 표지의 원제와 편곡자를 먼저 확인하세요.',description:'3박의 흐름과 노래 선율의 균형을 다루는 기타 편곡으로 연습하세요. 정확한 작품 해설은 판본 등록 후 연결하는 것이 안전합니다.',check:['첫 박을 과하게 누르지 않기','선율이 반주보다 앞에서 들리는지 녹음'],links:['general']},
+  'Verde Alma':{composer:'작곡자·편곡자 확인 필요',bio:'현재 레퍼토리 목록의 작곡자 칸이 비어 있습니다. 제목 표기와 편곡자가 확인되면 개별 작품 자료를 연결할 수 있습니다.',description:'편곡 악보의 성부 우선순위를 정하는 것이 먼저입니다. 멜로디·베이스·내성을 색으로 표시해 연습하세요.',check:['선율과 베이스를 따로 소리 내기','반주 음량을 한 단계 낮추기'],links:['general']},
+  'Melodia Noite':{composer:'작곡자·편곡자 확인 필요',bio:'현재 레퍼토리 목록의 작곡자 칸이 비어 있습니다. 언어별 표기 차이가 있을 수 있으니 악보 표지의 원제를 기록해 주세요.',description:'느린 선율곡은 박의 중심이 흐려지기 쉽습니다. 호흡과 루바토는 기본 박이 안정된 뒤에 더하세요.',check:['느린 메트로놈으로 프레이즈 점검','음과 음 사이 침묵도 박 안에서 유지'],links:['general']},
+  'El Delirio':{composer:'작곡자·편곡자 확인 필요',bio:'현재 레퍼토리 목록의 작곡자 칸이 비어 있습니다. 동일 제목 작품이 있을 수 있어 판본 확인이 필요합니다.',description:'빠른 연결이 포함된 편곡으로 보고, 손의 준비 동작을 소리보다 먼저 안정시키세요.',check:['왼손 착지와 오른손 준비를 분리','깨끗한 5회 뒤에만 4 BPM 올리기'],links:['general']},
+  'Wind Song':{composer:'작곡자·편곡자 확인 필요',bio:'현재 레퍼토리 목록의 작곡자 칸이 비어 있습니다. 악보 표지의 원제·작곡자·편곡자를 메모에 등록해 주세요.',description:'편곡에 따라 성부 배치가 달라질 수 있습니다. 선율·베이스·내성을 먼저 표시한 뒤 음색 균형을 잡으세요.',check:['성부별로 한 번씩 따로 연주','선율이 반주에 묻히지 않는지 녹음'],links:['general']},
+  '고향의 봄':{composer:'홍난파 (1897–1941)',bio:'한국의 작곡가·바이올리니스트. 한국 가곡과 동요의 형성에 큰 영향을 주었습니다.',description:'이원수의 시에 홍난파가 곡을 붙인 한국 가곡입니다. 기타 편곡에서는 가사 호흡을 떠올리며 선율을 자연스럽게 이어가세요.',check:['가사 호흡 위치에 프레이즈 표시','프레이즈 끝 음을 짧게 자르지 않기'],links:['general']},
+};
 function formatDuration(sec) {
   if (sec==null || isNaN(sec)) return '';
   sec=Math.max(0,Math.round(sec));
@@ -1647,6 +1716,48 @@ function techniqueForPiece(piece) {
 function practiceNoteForPiece(piece) {
   return PIECE_PRACTICE_NOTES[piece?.title] || '악보에서 선율·베이스·내성의 우선순위를 표시하고, 가장 불안한 1–2마디부터 느리게 확인하세요.';
 }
+function safeExternalUrl(value) {
+  try { const url=new URL(value); return /^https?:$/.test(url.protocol) ? url.href : ''; } catch(e) { return ''; }
+}
+function researchForPiece(piece) {
+  const known=PIECE_RESEARCH[piece?.title];
+  if (known) return known;
+  const composer=piece?.meta?.composer?.trim();
+  return {
+    composer:composer||'작곡자·편곡자 확인 필요',
+    bio:composer ? '현재 레퍼토리 목록에 등록된 작곡자 정보입니다. 정확한 생애·판본 정보는 악보 표지와 출판사를 함께 확인하세요.' : '현재 레퍼토리 목록에 작곡자 정보가 비어 있습니다. 악보 표지의 원제·작곡자·편곡자를 먼저 기록해 주세요.',
+    description:composer ? '이 곡은 사용 중인 기타 편곡의 판본에 따라 구조와 운지가 달라질 수 있습니다. 실제 악보의 반복·아티큘레이션 표기를 우선하세요.' : '곡명이 같은 편곡이 여러 개일 수 있어, 정확한 판본을 확인한 뒤 작곡가와 작품 설명을 연결하는 것이 안전합니다.',
+    check:[techniqueForPiece(piece),practiceNoteForPiece(piece)],
+    links:['general']
+  };
+}
+function renderPieceResearch(piece) {
+  const host=document.getElementById('pieceResearch');
+  if (!host) return;
+  if (!piece) {
+    host.innerHTML='<div class="research-block"><div class="research-label">Ready</div><div class="research-composer">집중곡을 기다리는 중</div><div class="research-copy">레퍼토리에 곡을 추가하면 작곡가·작품 설명·연습 자료가 여기에 표시됩니다.</div></div>';
+    return;
+  }
+  const info=researchForPiece(piece);
+  const links=(info.links||['general']).map(key=>CURATED_REFERENCE_LINKS[key]).filter(Boolean);
+  const savedScore=safeExternalUrl(piece.d?.scoreLink||'');
+  if(savedScore) links.unshift({label:'내가 연결한 악보 열기',url:savedScore});
+  host.innerHTML=`
+    <article class="research-block">
+      <div class="research-label">Composer</div>
+      <div class="research-composer">${practiceEscape(info.composer)}</div>
+      <div class="research-copy">${practiceEscape(info.bio)}</div>
+    </article>
+    <article class="research-block">
+      <div class="research-label">About the piece · ${practiceEscape(piece.title)}</div>
+      <div class="research-copy">${practiceEscape(info.description)}</div>
+    </article>
+    <article class="research-block">
+      <div class="research-label">Practice brief</div>
+      <ul class="research-list">${[...(info.check||[]),`오늘의 주의: ${practiceNoteForPiece(piece)}`].map(x=>`<li>${practiceEscape(x)}</li>`).join('')}</ul>
+      <div class="research-links">${links.map(link=>`<a class="research-link" href="${practiceEscape(link.url)}" target="_blank" rel="noopener">↗ ${practiceEscape(link.label)}</a>`).join('')}</div>
+    </article>`;
+}
 function allocatePracticeMinutes(total,goal) {
   const weights={
     balanced:[.25,.39,.20,.16],
@@ -1687,6 +1798,7 @@ function renderPracticePlan() {
   document.getElementById('practicePersonalNote').textContent=focus
     ? `${queue.length}곡 중 ${overdue}곡이 순환 대상 · 오늘의 집중곡: ${focus.title}`
     : '레퍼토리에 곡을 추가하면 자동으로 맞춤 구성됩니다';
+  renderPieceResearch(focus);
   const checks=loadPracticeChecks();
   container.innerHTML=steps.map(step=>`
     <div class="practice-step${checks[step.id]?' done':''}">
