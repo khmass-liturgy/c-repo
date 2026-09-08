@@ -991,6 +991,7 @@ h1 em { font-style:italic; color:var(--gold); }
     <div class="header-stats">
       <div class="stat"><span class="stat-num" id="totalCount">0</span><span class="stat-label">Total</span></div>
       <div class="stat"><span class="stat-num" id="readyCount">0</span><span class="stat-label">공연가능</span></div>
+      <div class="stat"><span class="stat-num" id="readyDuration">—</span><span class="stat-label">공연가능 시간</span></div>
       <div class="stat"><span class="stat-num" id="practiceCount">0</span><span class="stat-label">연습중</span></div>
       <div class="stat"><span class="stat-num" id="perfCount">0</span><span class="stat-label">공연이력</span></div>
     </div>
@@ -1945,8 +1946,12 @@ function render() { renderStats(); renderPracticeBanner(); renderPracticePlan();
 
 function renderStats() {
   const all=Object.values(state.pieces);
+  const ready=all.filter(p=>p.status==='공연가능');
+  const readyWithDuration=ready.filter(p=>p.duration!=null);
   document.getElementById('totalCount').textContent=all.length;
-  document.getElementById('readyCount').textContent=all.filter(p=>p.status==='공연가능').length;
+  document.getElementById('readyCount').textContent=ready.length;
+  document.getElementById('readyDuration').textContent=readyWithDuration.length
+    ? formatDuration(readyWithDuration.reduce((sum,p)=>sum+p.duration,0)) : '—';
   document.getElementById('practiceCount').textContent=all.filter(p=>p.status==='연습중').length;
   document.getElementById('perfCount').textContent=all.reduce((s,p)=>s+(p.performances?.length||0),0);
 }
@@ -2729,6 +2734,7 @@ function printView() {
   const stats = {
     total: all.length,
     ready: all.filter(p=>p.status==='공연가능').length,
+    readyDuration: (()=>{ const timed=all.filter(p=>p.status==='공연가능'&&p.duration!=null); return timed.length ? formatDuration(timed.reduce((s,p)=>s+p.duration,0)) : '—'; })(),
     practice: all.filter(p=>p.status==='연습중').length,
     perf: all.reduce((s,p)=>s+(p.performances?.length||0),0),
   };
@@ -2888,6 +2894,7 @@ h1 em { font-style:italic; color:#8a6d3e; }
   <div class="stats">
     <div class="stat"><span class="stat-num">${stats.total}</span><span class="stat-label">Total</span></div>
     <div class="stat"><span class="stat-num">${stats.ready}</span><span class="stat-label">공연가능</span></div>
+    <div class="stat"><span class="stat-num">${stats.readyDuration}</span><span class="stat-label">공연가능 시간</span></div>
     <div class="stat"><span class="stat-num">${stats.practice}</span><span class="stat-label">연습중</span></div>
     <div class="stat"><span class="stat-num">${stats.perf}</span><span class="stat-label">공연이력</span></div>
   </div>
