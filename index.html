@@ -1358,8 +1358,8 @@ h1 em { font-style:italic; color:var(--gold); }
 
     <form id="gistCredentialForm" autocomplete="on" method="post" novalidate onsubmit="event.preventDefault(); connectGist();" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.target.matches('input[type=text],input[type=password]')){event.preventDefault();connectGist();}">
     <div class="form-row">
-      <label class="form-label" for="gistId">Gist ID (비워두면 기존 Gist 검색)</label>
-      <input class="form-input" id="gistId" name="username" type="text" autocomplete="username" spellcheck="false" autocapitalize="none" placeholder="자동입력 또는 기존 Gist 검색">
+      <label class="form-label" for="gistId">Gist ID (선택사항 · 토큰 입력 금지)</label>
+      <input class="form-input" id="gistId" name="gist-id" type="text" autocomplete="off" spellcheck="false" autocapitalize="none" oninput="handleGistIdInput()" placeholder="비워두면 기존 레퍼토리 Gist를 자동 검색">
     </div>
     <div class="form-row">
       <label class="form-label" for="gistToken">Personal Access Token *</label>
@@ -3130,8 +3130,30 @@ function saveGistConfig() {
   GistAuth.save(gistConfig);
 }
 
-function credentialStatus(message) {
-  document.getElementById('gistCredentialStatus').textContent = message;
+function credentialStatus(message, tone = 'normal') {
+  const status = document.getElementById('gistCredentialStatus');
+  status.textContent = message;
+  status.style.color = tone === 'error' ? 'var(--red)' : tone === 'success' ? 'var(--green)' : 'var(--muted)';
+  status.style.fontWeight = tone === 'error' ? '600' : '400';
+}
+
+function looksLikeGitHubToken(value) {
+  return /^(?:gh[pousr]_|github_pat_)/i.test(String(value || '').trim());
+}
+
+function handleGistIdInput() {
+  const idInput = document.getElementById('gistId');
+  const tokenInput = document.getElementById('gistToken');
+  const value = idInput.value.trim();
+  if (!looksLikeGitHubToken(value)) return false;
+  if (!tokenInput.value.trim()) tokenInput.value = value;
+  idInput.value = '';
+  idInput.style.borderColor = 'var(--red)';
+  tokenInput.style.borderColor = 'var(--gold)';
+  credentialStatus('Personal Access Token을 Gist ID 칸에서 제거했습니다. Gist ID는 비워두어도 됩니다. 새 토큰은 아래 칸에만 입력하세요.', 'error');
+  showToast('토큰은 Personal Access Token 칸에만 입력해주세요');
+  setTimeout(() => { idInput.style.borderColor=''; tokenInput.style.borderColor=''; }, 2400);
+  return true;
 }
 
 async function restoreGistAutofill(silent = false) {
@@ -3320,6 +3342,7 @@ function disconnectGist() {
 /* ── 연결 + 최초 동기화 ── */
 async function connectGist({ automatic = false } = {}) {
   if (gistConnecting || gistSyncing) { credentialStatus('진행 중인 동기화가 끝난 뒤 다시 시도해주세요.'); return; }
+  handleGistIdInput();
   const token = document.getElementById('gistToken').value.trim();
   const enteredId = document.getElementById('gistId').value.trim();
   if (typeof GistAuth === 'undefined') {
@@ -3338,7 +3361,11 @@ async function connectGist({ automatic = false } = {}) {
     return;
   }
 
-  if (enteredId && !gistId) { credentialStatus('Gist ID 형식을 확인해주세요.'); return; }
+  if (enteredId && !gistId) {
+    credentialStatus('Gist ID는 보통 영문·숫자로 된 식별자입니다. 모르면 칸을 비워두세요. 기존 Gist를 자동으로 찾습니다.', 'error');
+    document.getElementById('gistId').focus();
+    return;
+  }
   const version = ++gistAuthVersion;
   gistConnecting = true;
   clearTimeout(gistUploadTimer);

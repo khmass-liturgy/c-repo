@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const DIR = process.env.GIST_TEST_DIR || (fs.existsSync(path.join(__dirname,'index.html')) ? __dirname : path.dirname(__dirname));
 const htmlSource=fs.readFileSync(path.join(DIR,'index.html'),'utf8');
 assert.equal(htmlSource.match(/<script id="gist-auth-runtime">([\s\S]*?)<\/script>/)?.[1].trim(),fs.readFileSync(path.join(DIR,'gist-auth.js'),'utf8').trim(),'Embedded credential runtime must match its source');
-const ID = 'a'.repeat(32), ID2 = 'b'.repeat(32), TOKEN = 'test-only-not-a-real-token';
+const ID = 'a'.repeat(32), ID2 = 'b'.repeat(32), TOKEN = 'test-only-not-a-real-token', TOKEN_LIKE = 'ghp_test-only-not-a-real-token';
 const fixture = { categories: [{id:'test',name:'연습곡',icon:'♪',pieces:[{title:'Test piece',composer:'Test'}]}],state:{pieces:{'Test piece':{status:'연습중',memo:'',performances:[],duration:60}},collapsed:{}} };
 const gist = data => ({id:ID,files:{guitar_repertory_json:null,'guitar_repertory.json':{content:JSON.stringify(data),truncated:false}}});
 const server = http.createServer((req,res) => {
@@ -82,6 +82,25 @@ const server = http.createServer((req,res) => {
     await run('empty token click gives visible feedback',{},async(p,c)=>{
       await p.locator('#gistBtn').click();await clickConnect(p);
       assert((await p.locator('#gistCredentialStatus').textContent()).includes('Personal Access Token'));
+      assert.equal(c.length,0);
+    });
+    await run('PAT pasted into Gist ID is moved and never used as an ID',{},async(p,c)=>{
+      await p.locator('#gistBtn').click();
+      await p.locator('#gistId').fill(TOKEN_LIKE);
+      assert.equal(await p.locator('#gistId').getAttribute('autocomplete'),'off');
+      assert.equal(await p.locator('#gistId').evaluate(el=>el.value),'');
+      assert.equal(await p.locator('#gistToken').evaluate(el=>el.value),TOKEN_LIKE);
+      assert((await p.locator('#gistCredentialStatus').textContent()).includes('Gist ID 칸에서 제거'));
+      await clickConnect(p);
+      assert.equal(c.length,2);
+      assert(c.every(call=>!call.path.includes(TOKEN_LIKE)));
+    });
+    await run('PAT in both fields clears the wrong field without replacing password',{},async(p,c)=>{
+      await p.locator('#gistBtn').click();
+      await p.locator('#gistToken').fill(TOKEN);
+      await p.locator('#gistId').fill('github_pat_fake-not-real-token');
+      assert.equal(await p.locator('#gistId').evaluate(el=>el.value),'');
+      assert.equal(await p.locator('#gistToken').evaluate(el=>el.value),TOKEN);
       assert.equal(c.length,0);
     });
     await run('stalled network releases the button with an error',{hangNetwork:true},async(p,c)=>{
@@ -159,7 +178,7 @@ const server = http.createServer((req,res) => {
       await p.setViewportSize({width:390,height:844});await p.locator('#gistBtn').click();
       await p.locator('#gistModal').evaluate(el=>Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished)));
       assert.equal(await p.locator('#gistToken').getAttribute('autocomplete'),'current-password');
-      assert.equal(await p.locator('#gistId').getAttribute('autocomplete'),'username');
+      assert.equal(await p.locator('#gistId').getAttribute('autocomplete'),'off');
       assert(await p.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
       if (process.env.GIST_TEST_ARTIFACTS) await p.screenshot({path:path.join(process.env.GIST_TEST_ARTIFACTS,'gist-mobile.png'),fullPage:false});
     });
