@@ -24,10 +24,16 @@
   function supported() {
     return root.isSecureContext && typeof root.PasswordCredential === 'function' && !!root.navigator.credentials;
   }
+  function bounded(promise, milliseconds) {
+    let timer;
+    return Promise.race([promise, new Promise((_, reject) => {
+      timer = root.setTimeout(() => reject(new Error('연결 응답 대기시간 초과')), milliseconds);
+    })]).finally(() => root.clearTimeout(timer));
+  }
   async function restore(silent) {
     if (!supported()) return null;
     try {
-      const entry = await root.navigator.credentials.get({ password: true, mediation: silent ? 'silent' : 'required' });
+      const entry = await bounded(root.navigator.credentials.get({ password: true, mediation: silent ? 'silent' : 'required' }), silent ? 3000 : 60000);
       // Never send another application's saved password to GitHub.
       if (!entry || entry.type !== 'password' || !entry.id.startsWith(PREFIX)) return null;
       const gistId = normalizeId(entry.id);
@@ -37,9 +43,9 @@
   async function remember(config) {
     if (!supported()) return false;
     try {
-      await root.navigator.credentials.store(new root.PasswordCredential({
+      await bounded(root.navigator.credentials.store(new root.PasswordCredential({
         id: PREFIX + normalizeId(config.gistId), password: config.token, name: '클래식기타 레퍼토리 Gist'
-      }));
+      })), 60000);
       return true;
     } catch (_) { return false; }
   }
@@ -47,14 +53,19 @@
     try { await root.navigator.credentials?.preventSilentAccess(); } catch (_) {}
   }
   async function request(path, token, options = {}) {
+    const controller = new root.AbortController();
+    const timer = root.setTimeout(() => controller.abort(), 15000);
+    try {
     const res = await root.fetch('https://api.github.com' + path, {
       ...options, credentials: 'omit', cache: 'no-store', redirect: 'error',
+      signal: controller.signal,
       headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
     });
     // Do not echo response bodies or fetch exceptions that might contain private data.
     if (!res.ok) throw new Error(`GitHub 응답 ${res.status}: 토큰 만료·gist 권한·Gist ID를 확인해주세요.`);
-    return res.json();
+    return await res.json();
+    } finally { root.clearTimeout(timer); }
   }
   async function find(token) {
     const found = new Map();

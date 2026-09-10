@@ -23,4 +23,12 @@
 
 구현 확인에는 가짜 자격증명과 차단된 외부 네트워크를 사용한 브라우저 테스트를 사용합니다. 실제 계정 간 비밀번호 동기화는 사용자 설정 확인이 필요합니다.
 
+## 연결 버튼 동작과 회귀 검사
+
+- 연결 버튼과 Enter 입력은 폼의 기본 제출 대신 동일한 연결 함수를 직접 실행합니다. 폼 제출이 제한된 내장 화면에서도 동작하며, 토큰을 페이지 주소나 폼 전송 데이터에 넣지 않습니다.
+- 브라우저 비밀번호 저장 창의 응답을 기다리지 않고 Gist 연결을 완료합니다. 저장 승인 여부와 연결 성공 여부는 별개입니다.
+- GitHub 요청은 15초 후 중단하며 버튼을 다시 활성화합니다. 빈 토큰과 연결 진행 상태도 모달 안에 표시합니다.
+- 인증 코드는 HTML에 포함되어 별도 JS 다운로드 실패로 연결이 멈추지 않습니다. 원본 `gist-auth.js`를 수정한 뒤 `node tools/sync-gist-auth.cjs`로 HTML의 포함 코드를 갱신하세요. 회귀 테스트에서 두 코드의 일치도 확인합니다.
+- `node tools/test-gist-autofill.cjs`는 Playwright와 Edge가 설치된 환경에서 실제 클릭·Enter·저장 대기·네트워크 지연을 검증합니다. Playwright가 별도 위치에 있으면 `PLAYWRIGHT_MODULE_PATH`를 지정하세요.
+
 참고: [GitHub 자격증명 보안](https://docs.github.com/en/rest/authentication/keeping-your-api-credentials-secure), [Chrome 기기 간 동기화](https://support.google.com/chrome/answer/165139), [Credential Management API](https://developer.mozilla.org/en-US/docs/Web/API/CredentialsContainer).

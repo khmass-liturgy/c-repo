@@ -5,10 +5,13 @@ const http = require('node:http');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const DIR = process.env.GIST_TEST_DIR || (fs.existsSync(path.join(__dirname,'index.html')) ? __dirname : path.dirname(__dirname));
+const htmlSource=fs.readFileSync(path.join(DIR,'index.html'),'utf8');
+assert.equal(htmlSource.match(/<script id="gist-auth-runtime">([\s\S]*?)<\/script>/)?.[1].trim(),fs.readFileSync(path.join(DIR,'gist-auth.js'),'utf8').trim(),'Embedded credential runtime must match its source');
 const ID = 'a'.repeat(32), ID2 = 'b'.repeat(32), TOKEN = 'test-only-not-a-real-token';
 const fixture = { categories: [{id:'test',name:'연습곡',icon:'♪',pieces:[{title:'Test piece',composer:'Test'}]}],state:{pieces:{'Test piece':{status:'연습중',memo:'',performances:[],duration:60}},collapsed:{}} };
 const gist = data => ({id:ID,files:{guitar_repertory_json:null,'guitar_repertory.json':{content:JSON.stringify(data),truncated:false}}});
 const server = http.createServer((req,res) => {
+  if(req.url==='/frame') {res.setHeader('Content-Type','text/html');res.end('<iframe style="width:100%;height:100vh" sandbox="allow-scripts allow-same-origin" src="/"></iframe>');return;}
   const file = new URL(req.url,'http://localhost').pathname === '/gist-auth.js' ? 'gist-auth.js' : 'index.html';
   res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':'text/html; charset=utf-8');
   res.end(fs.readFileSync(path.join(DIR,file)));
@@ -21,18 +24,24 @@ const server = http.createServer((req,res) => {
   async function run(name, options, check) {
     const context = await browser.newContext();
     const calls=[], errors=[];
-    await context.addInitScript(({legacy,credential,autofillPaused}) => {
+    await context.addInitScript(({legacy,credential,autofillPaused,savePending,getPending,hangNetwork}) => {
       window.__stored=[];window.__pause=0;
       window.PasswordCredential = class {constructor(v){Object.assign(this,v);this.type='password';}};
       Object.defineProperty(navigator,'credentials',{value:{
-        async get(){return credential||null;},async store(value){window.__stored.push({id:value.id,password:value.password});return value;},
+        async get(){return getPending?new Promise(()=>{}):(credential||null);},async store(value){window.__stored.push({id:value.id,password:value.password});return savePending?new Promise(()=>{}):value;},
         async preventSilentAccess(){window.__pause++;}
       }});
       if (legacy) localStorage.setItem('guitar_gist_config',JSON.stringify(legacy));
       if (autofillPaused) localStorage.setItem('guitar_gist_config',JSON.stringify({autofillPaused:true}));
+      if(getPending||hangNetwork) {
+        const timeout=window.setTimeout.bind(window);
+        window.setTimeout=(fn,ms,...args)=>timeout(fn,(ms===3000||ms===15000)?100:ms,...args);
+      }
+      if(hangNetwork) window.fetch=(url,options)=>new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new DOMException('Timed out','AbortError'))));
     },options);
     await context.route('**/*',async route => {
       const request=route.request(), u=new URL(request.url());
+      if(options.missingHelper&&u.pathname==='/gist-auth.js')return route.abort();
       if(u.origin===url) return route.continue();
       if(u.origin!=='https://api.github.com') return route.abort();
       calls.push({method:request.method(),path:u.pathname,query:u.search,body:request.postData(),authorization:request.headers().authorization});
@@ -40,8 +49,10 @@ const server = http.createServer((req,res) => {
       const body=u.pathname==='/gists' && request.method()==='GET' ? list : (options.badFile ? {id:ID,files:{'unrelated.json':{content:'{}'}}} : gist(options.data||fixture));
       await route.fulfill({status:options.fail?401:200,contentType:'application/json',body:JSON.stringify(body)});
     });
-    const page=await context.newPage(); page.on('pageerror',err=>errors.push(err.message));
-    await page.goto(url); await page.waitForFunction(()=>typeof GistAuth==='object' && !!document.querySelector('.category-section'));
+    const outer=await context.newPage(); outer.on('pageerror',err=>errors.push(err.message));
+    await outer.goto(url+(options.frame?'/frame':''));
+    const page=options.frame?outer.frames()[1]:outer;
+    await page.waitForFunction(()=>typeof GistAuth==='object' && !!document.querySelector('.category-section'));
     await page.evaluate(()=>initializeGistSync());
     await check(page,calls);
     const stored=await page.evaluate(()=>JSON.stringify({...localStorage}));
@@ -49,7 +60,36 @@ const server = http.createServer((req,res) => {
     assert(!calls.some(c=>(c.body||'').includes(TOKEN)||c.path.includes(TOKEN)||c.query.includes(TOKEN)),'PAT leaked into payload or URL');
     assert.deepEqual(errors,[]); results.push(name); await context.close();
   }
+  async function clickConnect(page) {
+    await page.locator('#gistConnectBtn').click();
+    await page.waitForFunction(()=>!gistConnecting);
+  }
   try {
+    for(const [name,options] of [
+      ['button click works in form-restricted embed',{frame:true}],
+      ['single HTML works without a separate helper download',{missingHelper:true}],
+      ['pending browser password prompt never locks connect button',{savePending:true}],
+      ['pending silent autofill cannot block manual connection',{getPending:true}]
+    ]) await run(name,options,async(p,c)=>{
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);
+      await clickConnect(p);assert(await p.evaluate(()=>isGistConnected()));assert(!await p.locator('#gistConnectBtn').isDisabled());
+    });
+    await run('Enter connects through the same direct handler',{frame:true},async(p,c)=>{
+      await p.locator('#gistBtn').click();await p.locator('#gistId').fill(ID);await p.locator('#gistToken').fill(TOKEN);
+      await p.locator('#gistToken').press('Enter');await p.waitForFunction(()=>isGistConnected()&&!gistConnecting);
+      assert.equal(c.length,1);
+    });
+    await run('empty token click gives visible feedback',{},async(p,c)=>{
+      await p.locator('#gistBtn').click();await clickConnect(p);
+      assert((await p.locator('#gistCredentialStatus').textContent()).includes('Personal Access Token'));
+      assert.equal(c.length,0);
+    });
+    await run('stalled network releases the button with an error',{hangNetwork:true},async(p,c)=>{
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);
+      await clickConnect(p);assert(!await p.locator('#gistConnectBtn').isDisabled());
+      assert((await p.locator('#gistCredentialStatus').textContent()).includes('연결 실패'));
+      assert(!await p.evaluate(()=>isGistConnected()));
+    });
     await run('legacy migration removes plaintext; startup is GET-only',{legacy:{token:TOKEN,gistId:ID}},async(p,c)=>{
       await p.waitForFunction(()=>isGistConnected());
       assert(c.every(x=>x.method==='GET'));
@@ -57,8 +97,8 @@ const server = http.createServer((req,res) => {
       assert.equal(cfg.gistId,ID); assert(!('token' in cfg));
     });
     await run('manual connect discovers ID and stores pair only in password manager',{},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);
-      await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);
+      await clickConnect(p);
       assert.equal(await p.evaluate(()=>gistConfig.gistId),ID);
       assert.equal(await p.evaluate(()=>__stored.length),1);
       assert.equal(await p.evaluate(()=>__stored[0].id),'c-repo-gist:'+ID);
@@ -71,31 +111,31 @@ const server = http.createServer((req,res) => {
     });
     await run('unrelated saved password never sent to GitHub',{credential:{type:'password',id:'another-app',password:TOKEN}},async(p,c)=>{assert.equal(c.length,0);});
     await run('no match never creates silently',{matches:[]},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await clickConnect(p);
       assert(!await p.evaluate(()=>isGistConnected()));assert(c.every(x=>x.method==='GET'));
     });
     await run('new Gist requires explicit opt-in and excludes credentials',{matches:[]},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistCreateNew').check();
-      await p.locator('#gistRemember').uncheck();await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistCreateNew').check();
+      await p.locator('#gistRemember').uncheck();await clickConnect(p);
       assert.equal(c.filter(x=>x.method==='POST').length,1);assert.equal(await p.evaluate(()=>__stored.length),0);
       const body=JSON.parse(c.find(x=>x.method==='POST').body);assert.equal(body.public,false);
       assert.deepEqual(Object.keys(JSON.parse(body.files['guitar_repertory.json'].content)).sort(),['categories','state']);
     });
     await run('empty remote stays empty instead of uploading local defaults',{data:{categories:[],state:{pieces:{},collapsed:{}}}},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await clickConnect(p);
       assert.equal(await p.evaluate(()=>Object.keys(state.pieces).length),0);assert(c.every(x=>x.method==='GET'));
     });
     await run('multiple matches require selection',{matches:[ID,ID2].map(id=>({id,description:'<img src=x onerror=alert(1)>',files:{'guitar_repertory.json':{}}}))},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await clickConnect(p);
       assert.equal(await p.locator('#gistCandidates button').count(),2);assert.equal(await p.locator('#gistCandidates img').count(),0);
       assert(!await p.evaluate(()=>isGistConnected()));assert.equal(await p.evaluate(()=>__stored.length),0);
     });
     await run('invalid credential is never saved',{fail:true},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await clickConnect(p);
       assert(!await p.evaluate(()=>isGistConnected()));assert.equal(await p.evaluate(()=>__stored.length),0);
     });
     await run('unrelated Gist cannot become an upload target',{badFile:true},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await clickConnect(p);
       assert(!await p.evaluate(()=>isGistConnected()));assert(c.every(x=>x.method==='GET'));
     });
     await run('disconnect clears memory and blocks silent restoration',{legacy:{token:TOKEN,gistId:ID}},async(p,c)=>{
@@ -110,13 +150,13 @@ const server = http.createServer((req,res) => {
     hostile.categories[0].pieces[0]={title:attack,composer:attack};
     hostile.state.pieces={[attack]:{status:'연습중',memo:attack,scoreLink:'javascript:window.__injected=1',performances:[],duration:60}};
     await run('Gist text and URLs cannot inject HTML into repertoire',{data:hostile},async(p,c)=>{
-      await p.evaluate(()=>openGistModal());await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await p.evaluate(()=>connectGist());
+      await p.locator('#gistBtn').click();await p.locator('#gistToken').fill(TOKEN);await p.locator('#gistId').fill(ID);await clickConnect(p);
       assert(await p.evaluate(()=>isGistConnected()));assert.equal(await p.evaluate(()=>window.__injected),undefined);
       assert.equal(await p.locator('#categoriesContainer img, #rotationList img').count(),0);
       assert.equal(await p.locator('a[href^="javascript:"]').count(),0);
     });
     await run('mobile dialog layout and labels',{},async(p,c)=>{
-      await p.setViewportSize({width:390,height:844});await p.evaluate(()=>openGistModal());
+      await p.setViewportSize({width:390,height:844});await p.locator('#gistBtn').click();
       await p.locator('#gistModal').evaluate(el=>Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished)));
       assert.equal(await p.locator('#gistToken').getAttribute('autocomplete'),'current-password');
       assert.equal(await p.locator('#gistId').getAttribute('autocomplete'),'username');
