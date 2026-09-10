@@ -1352,18 +1352,24 @@ h1 em { font-style:italic; color:var(--gold); }
   <div class="modal" style="max-width:440px">
     <div class="modal-title" style="margin-bottom:6px">☁ GitHub Gist 동기화</div>
     <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:18px">
-      Personal Access Token과 Gist ID를 입력하면, 이후 저장할 때마다 자동으로 Gist에 업로드되고
-      다른 컴퓨터에서 열 때 자동으로 최신 데이터를 불러옵니다.
+      두 값은 브라우저 비밀번호 관리자로 자동입력할 수 있습니다. 다른 컴퓨터에서는 같은 브라우저 계정의
+      비밀번호 동기화와 같은 사이트 주소가 필요합니다. 사이트 자체에는 토큰을 저장하지 않습니다.
     </p>
 
+    <form id="gistCredentialForm" autocomplete="on" method="post" onsubmit="event.preventDefault(); connectGist();">
     <div class="form-row">
-      <label class="form-label">Personal Access Token *</label>
-      <input class="form-input" id="gistToken" type="password" placeholder="ghp_로 시작하는 토큰">
+      <label class="form-label" for="gistId">Gist ID (비워두면 기존 Gist 검색)</label>
+      <input class="form-input" id="gistId" name="username" type="text" autocomplete="username" spellcheck="false" autocapitalize="none" placeholder="자동입력 또는 기존 Gist 검색">
     </div>
     <div class="form-row">
-      <label class="form-label">Gist ID (비워두면 새로 생성)</label>
-      <input class="form-input" id="gistId" type="text" placeholder="예: a1b2c3d4e5f6...">
+      <label class="form-label" for="gistToken">Personal Access Token *</label>
+      <input class="form-input" id="gistToken" name="password" type="password" autocomplete="current-password" spellcheck="false" autocapitalize="none" required placeholder="gist 권한의 토큰">
     </div>
+    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:10px"><input type="checkbox" id="gistRemember" checked> 연결 성공 후 브라우저 비밀번호 관리자에 저장 요청</label>
+    <button type="button" class="btn-ghost" onclick="restoreGistAutofill(false)">🔑 저장된 두 값 자동입력</button>
+    <div id="gistCandidates" style="margin-top:10px"></div>
+    <p id="gistCredentialStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);line-height:1.7;margin:10px 0">처음 한 번 연결하고 브라우저의 저장 안내를 승인해주세요. 공용 PC에서는 저장하지 마세요.</p>
+    <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:12px"><input type="checkbox" id="gistCreateNew"> 기존 Gist가 없을 때 새 Secret Gist 생성 (링크를 아는 사람은 열람 가능)</label>
 
     <div id="gistInfoBox" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--muted); line-height:1.6;">
       <div>연결됨 · 마지막 동기화: <span id="gistLastSync">-</span></div>
@@ -1374,18 +1380,21 @@ h1 em { font-style:italic; color:var(--gold); }
     <div id="gistDiagBox" style="display:none; background:#faf5ec; border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:var(--muted); line-height:1.8; font-family:monospace; max-height:160px; overflow-y:auto; white-space:pre-wrap;"></div>
 
     <div class="modal-footer" style="margin-top:8px">
-      <button class="btn-danger" id="gistDisconnectBtn" style="display:none" onclick="disconnectGist()">연결 해제</button>
+      <button type="button" class="btn-danger" id="gistDisconnectBtn" style="display:none" onclick="disconnectGist()">연결 해제</button>
       <div class="footer-right" style="margin-left:auto; flex-wrap:wrap; gap:6px; justify-content:flex-end">
-        <button class="btn-ghost" id="gistDiagBtn" style="display:none; font-size:11px" onclick="runGistDiag()">🔍 진단</button>
-        <button class="btn-ghost" id="gistManualSyncBtn" style="display:none; font-size:11px" onclick="manualSyncFromGist()">⬇ 지금 불러오기</button>
-        <button class="btn-ghost" onclick="closeGistModal()">닫기</button>
-        <button class="btn-primary" onclick="connectGist()">연결 / 저장</button>
+        <button type="button" class="btn-ghost" id="gistDiagBtn" style="display:none; font-size:11px" onclick="runGistDiag()">🔍 진단</button>
+        <button type="button" class="btn-ghost" id="gistManualSyncBtn" style="display:none; font-size:11px" onclick="manualSyncFromGist()">⬇ 지금 불러오기</button>
+        <button type="button" class="btn-ghost" onclick="closeGistModal()">닫기</button>
+        <button type="submit" id="gistConnectBtn" class="btn-primary">연결 / 저장</button>
       </div>
     </div>
+    </form>
 
     <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.7">
       <strong style="color:var(--gold); font-weight:400">토큰 만드는 법</strong><br>
-      github.com/settings/tokens → Generate new token (classic) → <strong style="color:var(--cream)">gist</strong> 권한 체크 → 생성된 토큰 복사
+      github.com/settings/tokens → Generate new token (classic) → <strong style="color:var(--cream)">gist만</strong> 권한 체크 · 짧은 만료기간 권장.<br>
+      브라우저가 자동입력을 지원하지 않으면 비밀번호 관리자에서 이 사이트 항목을 직접 선택하세요.
+      저장·동기화 허용 여부는 브라우저가 결정합니다. 토큰은 사용 중에는 이 탭의 메모리에만 유지됩니다.
     </div>
   </div>
 </div>
@@ -1404,6 +1413,7 @@ h1 em { font-style:italic; color:var(--gold); }
 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileImport(event)">
 <div class="toast" id="toast"></div>
 
+<script src="gist-auth.js"></script>
 <script>
 /* ══════════════ INITIAL DATA ══════════════ */
 const INITIAL_CATEGORIES = [
@@ -2021,7 +2031,7 @@ function renderPracticeBanner() {
     const row=document.createElement('div');
     row.className='rotation-row';
     row.innerHTML=`
-      <span class="rotation-title">${item.title}</span>
+      <span class="rotation-title">${practiceEscape(item.title)}</span>
       <span class="rotation-meta">${dLabel} · ${item.interval}일마다 목표</span>
       <button class="record-btn" title="오늘 연주">▶</button>`;
     row.querySelector('.record-btn').addEventListener('click', e=>quickPlay(e,item.title));
@@ -2054,7 +2064,7 @@ function renderCatTabs() {
   categories.forEach(cat => {
     const tab = document.createElement('button');
     tab.className = `cat-tab${currentCatTab===cat.id?' active':''}`;
-    tab.innerHTML = `<span class="tab-icon">${cat.icon}</span>${cat.name} <span class="tab-count">${cat.pieces.length}</span>`;
+    tab.innerHTML = `<span class="tab-icon">${practiceEscape(cat.icon)}</span>${practiceEscape(cat.name)} <span class="tab-count">${cat.pieces.length}</span>`;
     tab.onclick = () => setCatTab(cat.id);
     bar.appendChild(tab);
   });
@@ -2107,28 +2117,28 @@ function renderCategories() {
     sec.innerHTML=`
       ${showHeader ? `
       <div class="category-header">
-        <div class="cat-click-area" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">
-          <span class="cat-icon">${cat.icon}</span>
-          <span class="cat-name">${cat.name}</span>
+        <div class="cat-click-area" onclick="toggleCat(${practiceEscape(JSON.stringify(cat.id))},this.closest('.category-section'))">
+          <span class="cat-icon">${practiceEscape(cat.icon)}</span>
+          <span class="cat-name">${practiceEscape(cat.name)}</span>
           <span class="cat-count">${filtered.length}곡</span>
         </div>
         <div class="cat-actions">
-          <button class="cat-action-btn" onclick="openAddPieceModal('${cat.id}')" title="곡 추가">＋</button>
-          <button class="cat-action-btn del" onclick="confirmDeleteCat('${cat.id}')" title="카테고리 삭제">✕</button>
+          <button class="cat-action-btn" onclick="openAddPieceModal(${practiceEscape(JSON.stringify(cat.id))})" title="곡 추가">＋</button>
+          <button class="cat-action-btn del" onclick="confirmDeleteCat(${practiceEscape(JSON.stringify(cat.id))})" title="카테고리 삭제">✕</button>
         </div>
-        <span class="cat-chevron" onclick="toggleCat('${cat.id}',this.closest('.category-section'))">▼</span>
+        <span class="cat-chevron" onclick="toggleCat(${practiceEscape(JSON.stringify(cat.id))},this.closest('.category-section'))">▼</span>
       </div>` : `
       <div style="display:flex;justify-content:flex-end;padding:6px 18px 0;gap:8px">
-        <button class="cat-action-btn" onclick="openAddPieceModal('${cat.id}')" title="곡 추가">＋</button>
-        <button class="cat-action-btn del" onclick="confirmDeleteCat('${cat.id}')" title="카테고리 삭제">✕</button>
+        <button class="cat-action-btn" onclick="openAddPieceModal(${practiceEscape(JSON.stringify(cat.id))})" title="곡 추가">＋</button>
+        <button class="cat-action-btn del" onclick="confirmDeleteCat(${practiceEscape(JSON.stringify(cat.id))})" title="카테고리 삭제">✕</button>
       </div>`}
       <div class="category-body"><div class="category-body-inner">
-        <div class="piece-list" id="list-${cat.id}"></div>
-        <div class="cat-duration-footer" id="footer-${cat.id}" style="display:none"></div>
+        <div class="piece-list" id="list-${practiceEscape(cat.id)}"></div>
+        <div class="cat-duration-footer" id="footer-${practiceEscape(cat.id)}" style="display:none"></div>
       </div></div>`;
     container.appendChild(sec);
 
-    const list=sec.querySelector(`#list-${cat.id}`);
+    const list=sec.querySelector('.piece-list');
     const pieceArr = (currentSearch||currentFilter!=='all'?filtered:cat.pieces);
 
     if (!pieceArr.length) {
@@ -2162,24 +2172,24 @@ function renderCategories() {
       item.innerHTML=`
         ${reorderHtml}
         <div class="piece-info">
-          <span class="piece-title${isItalic?' italic':''}${d.scoreLink?' has-score':''}">${p.title}</span>
+          <span class="piece-title${isItalic?' italic':''}${d.scoreLink?' has-score':''}">${practiceEscape(p.title)}</span>
           ${d.scoreLink
-            ? `<a class="score-btn has-link" href="${d.scoreLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄 악보</a>`
+            ? `<a class="score-btn has-link" href="${practiceEscape(safeExternalUrl(d.scoreLink))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄 악보</a>`
             : ''}
           ${d.memo?.trim()
-            ? `<span class="memo-icon" title="메모: ${d.memo.trim().slice(0,80).replace(/"/g,'&quot;')}${d.memo.trim().length>80?'…':''}">📝</span>`
+            ? `<span class="memo-icon" title="메모: ${practiceEscape(d.memo.trim().slice(0,80))}${d.memo.trim().length>80?'…':''}">📝</span>`
             : ''}
-          ${p.composer?`<span class="piece-composer">${p.composer}</span>`:''}
+          ${p.composer?`<span class="piece-composer">${practiceEscape(p.composer)}</span>`:''}
         </div>
         <span class="piece-checks">${checks}</span>
-        <button class="status-badge status-${d.status}">${d.status}</button>
+        <button class="status-badge status-${practiceEscape(d.status)}">${practiceEscape(d.status)}</button>
         ${d.duration!=null ? `<span class="piece-duration">⏱ ${formatDuration(d.duration)}</span>` : ''}
         <span class="last-played ${lpCls}">${lpStr}</span>
         <button class="record-btn" title="오늘 연주">▶</button>
         <button class="piece-del-btn" title="삭제">✕</button>`;
 
       /* 곡명에 어퍼스트로피(') 등이 포함되어도 안전하도록 inline onclick 문자열 대신
-         addEventListener + 클로저로 title을 직접 전달 (기존에는 onclick="...('${p.title}')" 형태라
+         addEventListener + 클로저로 title을 직접 전달 (기존에는 onclick="...('${practiceEscape(p.title)}')" 형태라
          Testament d'Amelia 처럼 작은따옴표가 들어간 제목에서 속성이 깨져 버튼이 눌리지 않았음) */
       item.querySelector('.status-badge').addEventListener('click', e => cycleStatus(e, p.title));
       item.querySelector('.record-btn').addEventListener('click', e => quickPlay(e, p.title));
@@ -2227,7 +2237,7 @@ function renderCategories() {
     });
 
     // 카테고리 하단에 곡 총 연주시간 표시
-    const footer = sec.querySelector(`#footer-${cat.id}`);
+    const footer = sec.querySelector('.cat-duration-footer');
     const withDuration = pieceArr.filter(p=>state.pieces[p.title]?.duration!=null);
     if (withDuration.length) {
       const total = withDuration.reduce((s,p)=>s+state.pieces[p.title].duration,0);
@@ -2238,10 +2248,7 @@ function renderCategories() {
   });
 
   if (!hasAny) {
-    const msg = currentCatTab !== 'all' && !currentSearch && currentFilter === 'all'
-      ? '곡이 없습니다.<br><button onclick="openAddPieceModal(\''+currentCatTab+'\')" style="margin-top:10px;padding:6px 14px;border:1px solid var(--gold);background:rgba(201,169,110,.1);color:var(--gold);border-radius:2px;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;font-size:12px">＋ 곡 추가</button>'
-      : '검색 결과가 없습니다';
-    container.innerHTML = `<div class="empty-state">${msg}</div>`;
+    container.innerHTML = '<div class="empty-state">검색 결과가 없습니다</div>';
   }
 }
 
@@ -2270,7 +2277,7 @@ function renderTimeline() {
   Object.values(g).sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(gr=>{
     const d=new Date(gr.date);
     const el=document.createElement('div');el.className='timeline-item';
-    el.innerHTML=`<div><div class="tl-date">${d.getMonth()+1}/${d.getDate()}<br><small style="font-size:12px">${d.getFullYear()}</small></div><div class="tl-day">${days[d.getDay()]}요일</div></div><div class="tl-content"><div class="tl-venue">${gr.venue||'공연'}</div><div class="tl-pieces">${gr.pieces.map(t=>`<span class="tl-piece">${t}</span>`).join('')}</div></div>`;
+    el.innerHTML=`<div><div class="tl-date">${d.getMonth()+1}/${d.getDate()}<br><small style="font-size:12px">${d.getFullYear()}</small></div><div class="tl-day">${days[d.getDay()]}요일</div></div><div class="tl-content"><div class="tl-venue">${practiceEscape(gr.venue||'공연')}</div><div class="tl-pieces">${gr.pieces.map(t=>`<span class="tl-piece">${practiceEscape(t)}</span>`).join('')}</div></div>`;
     container.appendChild(el);
   });
 }
@@ -2374,7 +2381,7 @@ function renderPerfList() {
   if(!tempPerformances.length){list.innerHTML='<div style="font-size:13px;color:var(--muted);padding:4px 0">공연 기록이 없습니다</div>';return;}
   [...tempPerformances].sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach((p,i)=>{
     const el=document.createElement('div');el.className='perf-item';
-    el.innerHTML=`<span class="perf-date">${p.date}</span><span class="perf-venue">${p.venue||'-'}</span><button class="perf-del" onclick="delPerf(${i})">✕</button>`;
+    el.innerHTML=`<span class="perf-date">${practiceEscape(p.date)}</span><span class="perf-venue">${practiceEscape(p.venue||'-')}</span><button class="perf-del" onclick="delPerf(${i})">✕</button>`;
     list.appendChild(el);
   });
 }
@@ -2521,7 +2528,7 @@ function renderSetlistPicker(search=''){
 
     const group=document.createElement('div');
     group.className='setlist-cat-group';
-    group.innerHTML=`<div class="setlist-cat-label"><span>${srcCat.icon}</span>${srcCat.name}</div>`;
+    group.innerHTML=`<div class="setlist-cat-label"><span>${practiceEscape(srcCat.icon)}</span>${practiceEscape(srcCat.name)}</div>`;
 
     filtered.forEach(p=>{
       const inSet=alreadyIn.has(p.title);
@@ -2533,10 +2540,10 @@ function renderSetlistPicker(search=''){
       item.innerHTML=`
         <div class="setlist-check${checked?' checked':''}">${checked?'✓':''}</div>
         <div style="flex:1;min-width:0">
-          <span class="setlist-item-title${isItalic?' italic':''}">${p.title}</span>
-          ${p.composer?`<span class="setlist-item-composer"> — ${p.composer}</span>`:''}
+          <span class="setlist-item-title${isItalic?' italic':''}">${practiceEscape(p.title)}</span>
+          ${p.composer?`<span class="setlist-item-composer"> — ${practiceEscape(p.composer)}</span>`:''}
         </div>
-        <span class="setlist-item-status">${d.status}</span>
+        <span class="setlist-item-status">${practiceEscape(d.status)}</span>
         ${inSet?`<span style="font-size:10px;color:var(--muted)">이미 추가됨</span>`:''}`;
       if(!inSet){
         item.onclick=()=>{
@@ -2576,21 +2583,21 @@ function confirmDeletePiece(){
   if(!editingPiece)return;
   const cat=getCatById(editingPieceCatId);
   if (cat && cat.isSetlist) {
-    openConfirm(`<strong>${editingPiece}</strong>을(를) "${cat.name}" 목록에서 빼시겠어요?<br>원래 카테고리의 곡과 공연 이력은 그대로 유지됩니다.`,
+    openConfirm(`<strong>${practiceEscape(editingPiece)}</strong>을(를) "${practiceEscape(cat.name)}" 목록에서 빼시겠어요?<br>원래 카테고리의 곡과 공연 이력은 그대로 유지됩니다.`,
       ()=>{ removeFromSetlist(cat.id,editingPiece); closeModal(); });
     return;
   }
-  openConfirm(`<strong>${editingPiece}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>{deletePiece(editingPiece);closeModal();});
+  openConfirm(`<strong>${practiceEscape(editingPiece)}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>{deletePiece(editingPiece);closeModal();});
 }
 function confirmDeletePieceInline(e,title,catId){
   e.stopPropagation();
   const cat=getCatById(catId);
   if (cat && cat.isSetlist) {
-    openConfirm(`<strong>${title}</strong>을(를) "${cat.name}" 목록에서 빼시겠어요?<br>원래 카테고리의 곡과 공연 이력은 그대로 유지됩니다.`,
+    openConfirm(`<strong>${practiceEscape(title)}</strong>을(를) "${practiceEscape(cat.name)}" 목록에서 빼시겠어요?<br>원래 카테고리의 곡과 공연 이력은 그대로 유지됩니다.`,
       ()=>removeFromSetlist(cat.id,title));
     return;
   }
-  openConfirm(`<strong>${title}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>deletePiece(title));
+  openConfirm(`<strong>${practiceEscape(title)}</strong>을(를) 삭제하시겠어요?<br>공연 이력과 메모도 함께 삭제됩니다.`,()=>deletePiece(title));
 }
 /* 셋리스트(월례발표회 등)에서는 실제 곡을 지우지 않고, 그 목록에서만 빼준다 */
 function removeFromSetlist(catId,title){
@@ -2604,8 +2611,8 @@ function deletePiece(title){categories.forEach(c=>{c.pieces=c.pieces.filter(p=>p
 function confirmDeleteCat(catId){
   const cat=getCatById(catId);if(!cat)return;
   const msg = cat.isSetlist
-    ? `셋리스트 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>이 목록만 삭제되며, 곡 자체와 원래 카테고리는 그대로 유지됩니다.`
-    : `카테고리 <strong>${cat.name}</strong>을(를) 삭제하시겠어요?<br>포함된 ${cat.pieces.length}개 곡도 모두 삭제됩니다.`;
+    ? `셋리스트 <strong>${practiceEscape(cat.name)}</strong>을(를) 삭제하시겠어요?<br>이 목록만 삭제되며, 곡 자체와 원래 카테고리는 그대로 유지됩니다.`
+    : `카테고리 <strong>${practiceEscape(cat.name)}</strong>을(를) 삭제하시겠어요?<br>포함된 ${cat.pieces.length}개 곡도 모두 삭제됩니다.`;
   openConfirm(msg,()=>{
     if (!cat.isSetlist) cat.pieces.forEach(p=>delete state.pieces[p.title]);
     categories=categories.filter(c=>c.id!==catId);
@@ -2800,16 +2807,16 @@ function printView() {
       piecesHtml += `
         <div class="piece">
           <span class="dot" style="background:${dot}"></span>
-          <span class="title${isItalic?' italic':''}">${p.title}</span>
-          ${p.composer?`<span class="composer">${p.composer}</span>`:''}
+          <span class="title${isItalic?' italic':''}">${practiceEscape(p.title)}</span>
+          ${p.composer?`<span class="composer">${practiceEscape(p.composer)}</span>`:''}
           <span class="checks">${checks}</span>
         </div>`;
     });
     bodyHtml += `
       <div class="category">
         <div class="cat-header">
-          <span class="cat-icon">${cat.icon}</span>
-          <span class="cat-name">${cat.name}</span>
+          <span class="cat-icon">${practiceEscape(cat.icon)}</span>
+          <span class="cat-name">${practiceEscape(cat.name)}</span>
           <span class="cat-count">${cat.pieces.length}곡</span>
         </div>
         <div class="pieces">${piecesHtml}</div>
@@ -3006,16 +3013,45 @@ const GIST_FILENAME = 'guitar_repertory.json';
 let gistConfig = { token:'', gistId:'' };
 let gistUploadTimer = null;
 let gistSyncing = false;
+let gistConnecting = false;
+let gistAuthVersion = 0;
+let gistBootstrapping = true;
 
 function loadGistConfig() {
-  try {
-    const saved = localStorage.getItem('guitar_gist_config');
-    if (saved) gistConfig = JSON.parse(saved);
-  } catch(e) {}
+  gistConfig = GistAuth.load();
 }
 
 function saveGistConfig() {
-  try { localStorage.setItem('guitar_gist_config', JSON.stringify(gistConfig)); } catch(e) {}
+  GistAuth.save(gistConfig);
+}
+
+function credentialStatus(message) {
+  document.getElementById('gistCredentialStatus').textContent = message;
+}
+
+async function restoreGistAutofill(silent = false) {
+  if (gistConnecting || (silent && gistConfig.autofillPaused)) return;
+  const version = gistAuthVersion;
+  const entry = await GistAuth.restore(silent);
+  if (version !== gistAuthVersion || gistConnecting) return;
+  if (!entry) {
+    if (!silent) credentialStatus('자동입력 정보를 가져오지 못했습니다. 입력칸의 비밀번호 관리자에서 이 사이트 항목을 선택하거나 처음 한 번 입력해주세요.');
+    return;
+  }
+  document.getElementById('gistId').value = entry.gistId;
+  document.getElementById('gistToken').value = entry.token;
+  credentialStatus('브라우저에서 두 값을 불러왔습니다.');
+  if (silent) await connectGist({ automatic: true });
+}
+
+async function initializeGistSync() {
+  try {
+    if (isGistConnected()) await syncFromGistOnLoad();
+    else {
+      setSyncStatus('idle', '☁ Gist 연결에서 저장된 정보를 자동입력할 수 있습니다');
+      await restoreGistAutofill(true);
+    }
+  } finally { gistBootstrapping = false; }
 }
 
 function isGistConnected() {
@@ -3044,8 +3080,9 @@ function setSyncStatus(status, msg) {
 
 /* ── 모달 ── */
 function openGistModal() {
-  document.getElementById('gistToken').value = gistConfig.token || '';
-  document.getElementById('gistId').value = gistConfig.gistId || '';
+  // Do not erase credentials already autofilled by the browser.
+  if (gistConfig.token) document.getElementById('gistToken').value = gistConfig.token;
+  if (!document.getElementById('gistId').value) document.getElementById('gistId').value = gistConfig.gistId || '';
   const infoBox = document.getElementById('gistInfoBox');
   const disconnectBtn = document.getElementById('gistDisconnectBtn');
   const diagBtn = document.getElementById('gistDiagBtn');
@@ -3097,8 +3134,7 @@ async function runGistDiag() {
     diagLog('HTTP 응답: ' + res.status + ' ' + res.statusText);
 
     if (!res.ok) {
-      const errText = await res.text();
-      diagLog('✗ 오류 응답: ' + errText.substring(0, 200));
+      diagLog('✗ 요청 실패: 토큰 만료·gist 권한·Gist ID를 확인해주세요.');
       return;
     }
 
@@ -3106,7 +3142,7 @@ async function runGistDiag() {
     diagLog('Gist 설명: ' + (gist.description || '-'));
     diagLog('파일 목록: ' + Object.keys(gist.files).join(', '));
 
-    const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
+    const file = gist.files[GIST_FILENAME];
     if (!file) { diagLog('✗ guitar_repertory.json 파일 없음'); return; }
     diagLog('파일 크기: ' + file.size + ' bytes');
     diagLog('truncated: ' + file.truncated);
@@ -3122,11 +3158,13 @@ async function runGistDiag() {
     diagLog('악보 링크 있는 곡: ' + (withScore.length ? withScore.join(', ') : '없음'));
     diagLog('✓ 진단 완료 — 데이터 정상');
   } catch(e) {
-    diagLog('✗ 예외 발생: ' + e.message);
+    diagLog('✗ 진단 실패: 파일 형식 또는 네트워크를 확인해주세요.');
   }
 }
 
 async function manualSyncFromGist() {
+  if (!isGistConnected() || gistConnecting) return;
+  const version = gistAuthVersion;
   diagLog('=== 수동 불러오기 시작 ===');
   try {
     const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
@@ -3135,10 +3173,8 @@ async function manualSyncFromGist() {
     diagLog('HTTP: ' + res.status);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const gist = await res.json();
-    const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
-    if (!file?.content) throw new Error('파일 내용 없음');
-    const remote = JSON.parse(file.content);
-    if (!remote.categories || !remote.state) throw new Error('데이터 형식 오류');
+    const remote = GistAuth.parse(gist);
+    if (version !== gistAuthVersion) return;
     categories = remote.categories;
     state = remote.state;
     fillDefaultDurations();
@@ -3151,16 +3187,25 @@ async function manualSyncFromGist() {
     const withScore = Object.entries(state.pieces).filter(([,d])=>d.scoreLink).map(([t])=>t);
     diagLog('악보 링크: ' + (withScore.length ? withScore.join(', ') : '없음'));
   } catch(e) {
-    diagLog('✗ 실패: ' + e.message);
-    setSyncStatus('error', '불러오기 실패: ' + e.message);
+    if (version !== gistAuthVersion) return;
+    diagLog('✗ 불러오기 실패: 토큰 권한·Gist 파일·네트워크를 확인해주세요.');
+    setSyncStatus('error', '불러오기 실패 (로컬 데이터 유지)');
   }
 }
-function closeGistModal() { document.getElementById('gistModal').classList.remove('open'); }
+function closeGistModal() {
+  document.getElementById('gistModal').classList.remove('open');
+  document.getElementById('gistToken').value = '';
+}
 
 function disconnectGist() {
-  openConfirm('Gist 연결을 해제하시겠어요?<br>로컬 데이터는 그대로 유지됩니다.', () => {
-    gistConfig = { token:'', gistId:'' };
+  openConfirm('Gist 연결을 해제하시겠어요?<br>로컬 연습 데이터는 유지됩니다. 브라우저에 저장된 항목은 비밀번호 관리자에서 직접 삭제해주세요.', () => {
+    gistAuthVersion++;
+    clearTimeout(gistUploadTimer);
+    gistConfig = { token:'', gistId:'', autofillPaused:true };
     saveGistConfig();
+    GistAuth.pause();
+    document.getElementById('gistId').value = '';
+    document.getElementById('gistCandidates').replaceChildren();
     setSyncStatus('idle','');
     closeGistModal();
     showToast('Gist 연결이 해제되었습니다');
@@ -3168,9 +3213,11 @@ function disconnectGist() {
 }
 
 /* ── 연결 + 최초 동기화 ── */
-async function connectGist() {
+async function connectGist({ automatic = false } = {}) {
+  if (gistConnecting || gistSyncing) { credentialStatus('진행 중인 동기화가 끝난 뒤 다시 시도해주세요.'); return; }
   const token = document.getElementById('gistToken').value.trim();
-  let gistId = document.getElementById('gistId').value.trim();
+  const enteredId = document.getElementById('gistId').value.trim();
+  let gistId = GistAuth.normalizeId(enteredId);
 
   if (!token) {
     const el = document.getElementById('gistToken');
@@ -3180,75 +3227,99 @@ async function connectGist() {
     return;
   }
 
-  gistConfig.token = token;
+  if (enteredId && !gistId) { credentialStatus('Gist ID 형식을 확인해주세요.'); return; }
+  const version = ++gistAuthVersion;
+  gistConnecting = true;
+  clearTimeout(gistUploadTimer);
+  document.getElementById('gistConnectBtn').disabled = true;
   setSyncStatus('syncing', 'Gist 연결 확인 중...');
 
   try {
-    if (gistId) {
-      // 기존 Gist에서 데이터 가져오기
-      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-        headers: { 'Authorization': `token ${token}`, 'Accept':'application/vnd.github+json' }
-      });
-      if (!res.ok) throw new Error(res.status === 404 ? 'Gist를 찾을 수 없습니다 (ID 확인)' : `오류 ${res.status} (Token 권한 확인)`);
-      const gist = await res.json();
-      const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
-
-      if (file && file.content) {
-        const remote = JSON.parse(file.content);
-        if (remote.categories && remote.state) {
-          // 원격 데이터가 있으면: 더 최신인 쪽 사용 여부 확인
-          const localCount = Object.keys(state.pieces||{}).length;
-          const remoteCount = Object.keys(remote.state.pieces||{}).length;
-          if (remoteCount > 0) {
-            categories = remote.categories;
-            state = remote.state;
-    fillDefaultDurations();
-            seedPracticeNotes();
-            try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
-            render();
-            showToast('Gist에서 데이터를 불러왔습니다');
-          }
-        }
+    if (!gistId) {
+      const matches = await GistAuth.find(token);
+      if (version !== gistAuthVersion) return;
+      const host = document.getElementById('gistCandidates');
+      host.replaceChildren();
+      if (matches.length > 1) {
+        matches.forEach(match => {
+          const button = document.createElement('button');
+          button.type = 'button'; button.className = 'btn-ghost';
+          button.textContent = `${match.description} · ${match.id.slice(0,8)}…`;
+          button.addEventListener('click', () => {
+            document.getElementById('gistId').value = match.id;
+            host.replaceChildren();
+            credentialStatus('Gist를 선택했습니다. 연결 / 저장을 눌러주세요.');
+          });
+          host.appendChild(button);
+        });
+        credentialStatus('레퍼토리 Gist가 여러 개입니다. 사용할 항목을 선택해주세요.');
+        setSyncStatus('idle', 'Gist 선택 필요');
+        return;
       }
-      gistConfig.gistId = gistId;
+      if (matches.length === 1) gistId = matches[0].id;
+      else if (automatic || !document.getElementById('gistCreateNew').checked) {
+        credentialStatus('기존 레퍼토리 Gist를 찾지 못했습니다. ID를 직접 입력하거나 새 Gist 생성에 체크해주세요.');
+        setSyncStatus('idle', '기존 Gist 없음');
+        return;
+      }
+    }
+    let remote;
+    if (gistId) {
+      remote = await GistAuth.read(token, gistId);
     } else {
-      // 새 Gist 생성
-      const res = await fetch('https://api.github.com/gists', {
+      // Creating a Gist requires the explicit checkbox; discovery alone is read-only.
+      const gist = await GistAuth.request('/gists', token, {
         method: 'POST',
-        headers: { 'Authorization': `token ${token}`, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
         body: JSON.stringify({
           description: 'Classical Guitar Repertory (auto-sync)',
           public: false,
           files: { [GIST_FILENAME]: { content: JSON.stringify({categories,state},null,2) } }
         })
       });
-      if (!res.ok) throw new Error(`Gist 생성 실패 (${res.status}) — Token의 gist 권한을 확인해주세요`);
-      const gist = await res.json();
-      gistConfig.gistId = gist.id;
-      document.getElementById('gistId').value = gist.id;
-      showToast('새 Gist가 생성되었습니다');
+      gistId = GistAuth.normalizeId(gist.id);
+      if (!gistId) throw new Error('생성된 Gist ID 형식 오류');
     }
-
+    if (version !== gistAuthVersion) return;
+    // Commit the token and ID together only after successful validation.
+    gistConfig = { token, gistId, autofillPaused:false };
+    document.getElementById('gistId').value = gistId;
+    if (remote) {
+      categories = remote.categories; state = remote.state;
+      fillDefaultDurations(); seedPracticeNotes();
+      try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch (_) {}
+      render();
+    }
     saveGistConfig();
     localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
     setSyncStatus('synced', '✓ Gist 연결됨 · 자동 동기화 활성화');
+    if (!automatic && document.getElementById('gistRemember').checked) {
+      const saved = await GistAuth.remember({ token, gistId });
+      if (version !== gistAuthVersion) return;
+      showToast(saved ? '브라우저 저장 요청 완료 · 다른 PC에서는 비밀번호 동기화를 켜주세요' : '연결 완료 · 브라우저 비밀번호 관리자의 저장 안내를 사용해주세요');
+    } else if (!automatic) showToast('연결 완료 · 토큰은 이 탭에서만 유지됩니다');
     closeGistModal();
   } catch (err) {
-    setSyncStatus('error', '연결 실패: ' + err.message);
-    showToast('Gist 연결 실패: ' + err.message);
+    if (version !== gistAuthVersion) return;
+    const message = '연결 실패: 토큰 만료·gist 권한·Gist ID 또는 네트워크를 확인해주세요.';
+    credentialStatus(message);
+    setSyncStatus('error', message);
+    if (!automatic) showToast(message);
+  } finally {
+    gistConnecting = false;
+    document.getElementById('gistConnectBtn').disabled = false;
   }
 }
 
 /* ── 자동 업로드 (디바운스) ── */
 function scheduleGistUpload() {
-  if (!isGistConnected()) return;
+  if (!isGistConnected() || gistConnecting || gistBootstrapping) return;
   clearTimeout(gistUploadTimer);
   setSyncStatus('syncing', '동기화 대기 중...');
   gistUploadTimer = setTimeout(uploadToGist, 1500); // 1.5초 디바운스 — 연속 변경 시 한번만 업로드
 }
 
 async function uploadToGist(force=false) {
-  if (!isGistConnected() || (gistSyncing && !force)) return;
+  if (!isGistConnected() || gistConnecting || (gistSyncing && !force)) return;
   gistSyncing = true;
   setSyncStatus('syncing', 'Gist에 업로드 중...');
   try {
@@ -3279,6 +3350,7 @@ async function uploadToGist(force=false) {
 /* ── 시작 시 자동으로 Gist에서 최신 데이터 받아오기 ── */
 async function syncFromGistOnLoad() {
   if (!isGistConnected()) { setSyncStatus('idle',''); return; }
+  const version = gistAuthVersion;
   setSyncStatus('syncing', 'Gist에서 불러오는 중...');
   try {
     const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
@@ -3286,9 +3358,9 @@ async function syncFromGistOnLoad() {
     });
     if (!res.ok) throw new Error(`불러오기 실패 (${res.status})`);
     const gist = await res.json();
-    const file = gist.files[GIST_FILENAME] || Object.values(gist.files)[0];
-    if (file && file.content) {
-      const remote = JSON.parse(file.content);
+    const remote = GistAuth.parse(gist);
+    if (version !== gistAuthVersion) return;
+    {
       if (remote.categories && remote.state) {
 
         // ── 스마트 병합: 로컬에만 있는 scoreLink 등 필드를 Gist 데이터에 합칩니다 ──
@@ -3312,14 +3384,14 @@ async function syncFromGistOnLoad() {
         try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
         render();
 
-        // 병합된 데이터를 바로 Gist에도 다시 올려서 동기화
-        await uploadToGist(true);
+        // Credential restoration is read-only. Upload only after an actual user edit.
       }
     }
     localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
     setSyncStatus('synced', '✓ Gist와 동기화됨 · ' + new Date().toLocaleTimeString('ko-KR'));
   } catch (err) {
-    setSyncStatus('error', '불러오기 실패: ' + err.message + ' (로컬 데이터 사용)');
+    if (version !== gistAuthVersion) return;
+    setSyncStatus('error', '불러오기 실패: 토큰 권한·Gist 파일·네트워크 확인 (로컬 데이터 사용)');
   }
 }
 
@@ -3327,7 +3399,7 @@ async function syncFromGistOnLoad() {
 loadGistConfig();
 loadAll();
 render();
-syncFromGistOnLoad(); // Gist 연결되어 있으면 시작 시 최신 데이터로 자동 갱신
+initializeGistSync(); // Browser-controlled restoration; the app never persists a PAT.
 </script>
 </body>
 </html>
