@@ -1,35 +1,58 @@
 # c-repo
 
-클래식기타 레퍼토리 관리
+클래식기타 레퍼토리와 연습 기록을 관리하는 정적 웹앱입니다. 화면은 GitHub Pages에서 제공하고, 로그인과 사용자별 데이터는 Supabase에서 관리합니다.
 
-## 다른 컴퓨터에서 Gist 자동입력
+## 구조
 
-1. HTTPS로 열린 이 사이트에서 **Gist 연결**을 누르고 Personal Access Token을 입력합니다. `gist` 권한만 부여하고 만료기간을 짧게 설정하세요.
-2. Gist ID를 비워두면 기존 `guitar_repertory.json` Gist를 검색합니다. 여러 개면 직접 선택합니다. 새 Gist는 별도 체크박스를 선택해야 생성합니다.
-   Personal Access Token은 Gist ID가 아닙니다. 토큰이 Gist ID 칸에 붙여넣어지면 앱이 토큰 칸으로 옮기고 ID 칸을 비웁니다.
-3. **연결 / 저장** 후 브라우저 비밀번호 관리자의 저장 요청을 승인합니다. 저장 항목의 사용자 이름은 `c-repo-gist:<Gist ID>`, 비밀번호는 PAT입니다.
-4. 다른 컴퓨터에서 동일 브라우저 계정으로 비밀번호 동기화를 켜고 같은 사이트 주소를 엽니다. 브라우저가 허용하면 자동 복원되며, 그렇지 않으면 **저장된 두 값 자동입력** 또는 입력칸의 비밀번호 관리자를 사용합니다.
+```text
+GitHub Pages
+  ├─ index.html               화면과 연습 기능
+  ├─ supabase-config.js       공개 가능한 프로젝트 URL/Publishable Key
+  └─ supabase-storage.js      로그인·불러오기·저장 어댑터
 
-브라우저의 저장 승인·동기화·자동 로그인 설정은 사용자가 관리합니다. 사이트 코드만으로 이 설정을 켜거나 모든 브라우저에서 무조건 자동입력을 보장할 수는 없습니다. `file://`로 연 로컬 파일에서는 자동입력이 제한될 수 있습니다.
+Supabase
+  ├─ Auth                     이메일 Magic Link 로그인
+  └─ public.practice_documents
+       └─ 사용자당 1개 JSON 문서, RLS로 본인 행만 접근
+```
 
-## 보안 범위
+로그인하지 않은 동안에는 기존처럼 `localStorage`에 저장합니다. 처음 로그인했을 때 원격 데이터가 없으면 현재 로컬 데이터를 Supabase에 올리고, 이미 원격 데이터가 있으면 원격 데이터를 내려받습니다. 이후 변경사항은 1.2초 디바운스로 자동 저장합니다.
 
-- PAT를 HTML, Git 저장소, localStorage, sessionStorage, Gist 데이터, JSON 내보내기에 저장하지 않습니다. 앱은 현재 탭의 메모리에서만 사용하고 브라우저 비밀번호 관리자에 보관을 요청할 수 있습니다.
-- 기존 `guitar_gist_config`의 평문 토큰은 업데이트된 페이지를 열 때 해당 브라우저에서 제거됩니다. 다른 PC의 예전 저장소까지 원격 삭제하지는 못합니다. 기존 토큰은 현재 탭에서만 이어서 사용할 수 있으므로 종료 전에 비밀번호 관리자 저장을 완료하세요.
-- 비밀번호 관리자는 Gist ID도 보관합니다. 앱 localStorage에는 Gist ID와 자동 복원 중지 여부만 남깁니다.
-- 연결 실패 시 토큰과 ID를 새 조합으로 저장하지 않습니다. 다른 파일을 담은 Gist를 레퍼토리 저장 대상으로 연결하지 않습니다. 자동입력 및 시작 시 불러오기는 원격 데이터를 쓰지 않습니다.
-- 연결 해제는 탭의 인증정보와 자동 복원을 해제합니다. 브라우저에 저장된 항목은 비밀번호 관리자에서 별도로 삭제해야 합니다.
-- Secret Gist는 접근 제어된 비밀 저장소가 아닙니다. 링크를 아는 사람은 내용을 볼 수 있으므로 민감한 정보나 토큰을 넣지 마세요.
-- 브라우저 비밀번호 관리자를 쓰더라도 악성 확장 프로그램, 감염된 PC, 변조된 사이트 및 동일 출처의 다른 앱으로부터 완전한 보호를 보장하지는 않습니다. 공용 PC에서는 저장하지 마세요.
+## Supabase 연결
 
-구현 확인에는 가짜 자격증명과 차단된 외부 네트워크를 사용한 브라우저 테스트를 사용합니다. 실제 계정 간 비밀번호 동기화는 사용자 설정 확인이 필요합니다.
+1. `c-repo` 전용 Supabase 프로젝트를 만듭니다. 다른 서비스의 프로젝트를 재사용하지 않는 것을 권장합니다.
+2. 프로젝트에서 `supabase/migrations/*_create_practice_documents.sql`을 적용합니다.
+3. 프로젝트의 Data API 설정에서 `public.practice_documents`가 노출되어 있는지 확인합니다. 마이그레이션은 `authenticated` 역할에 최소 권한을 명시적으로 부여하고 RLS를 활성화합니다.
+4. Authentication → URL Configuration에서 다음 주소를 등록합니다.
+   - Site URL: `https://khmass-liturgy.github.io/c-repo/`
+   - Redirect URL: `https://khmass-liturgy.github.io/c-repo/**`
+5. `supabase-config.js`에 Project URL과 활성화된 **Publishable Key**를 입력합니다.
 
-## 연결 버튼 동작과 회귀 검사
+```js
+window.C_REPO_SUPABASE = Object.freeze({
+  url: 'https://PROJECT_REF.supabase.co',
+  publishableKey: 'sb_publishable_...',
+  table: 'practice_documents'
+});
+```
 
-- 연결 버튼과 Enter 입력은 폼의 기본 제출 대신 동일한 연결 함수를 직접 실행합니다. 폼 제출이 제한된 내장 화면에서도 동작하며, 토큰을 페이지 주소나 폼 전송 데이터에 넣지 않습니다.
-- 브라우저 비밀번호 저장 창의 응답을 기다리지 않고 Gist 연결을 완료합니다. 저장 승인 여부와 연결 성공 여부는 별개입니다.
-- GitHub 요청은 15초 후 중단하며 버튼을 다시 활성화합니다. 빈 토큰과 연결 진행 상태도 모달 안에 표시합니다.
-- 인증 코드는 HTML에 포함되어 별도 JS 다운로드 실패로 연결이 멈추지 않습니다. 원본 `gist-auth.js`를 수정한 뒤 `node tools/sync-gist-auth.cjs`로 HTML의 포함 코드를 갱신하세요. 회귀 테스트에서 두 코드의 일치도 확인합니다.
-- `node tools/test-gist-autofill.cjs`는 Playwright와 Edge가 설치된 환경에서 실제 클릭·Enter·저장 대기·네트워크 지연을 검증합니다. Playwright가 별도 위치에 있으면 `PLAYWRIGHT_MODULE_PATH`를 지정하세요.
+Publishable Key는 브라우저용 공개 식별자이며 RLS와 함께 사용합니다. `service_role`, secret key, 데이터베이스 비밀번호는 HTML·JavaScript·Git 저장소에 절대 넣지 않습니다.
 
-참고: [GitHub 자격증명 보안](https://docs.github.com/en/rest/authentication/keeping-your-api-credentials-secure), [Chrome 기기 간 동기화](https://support.google.com/chrome/answer/165139), [Credential Management API](https://developer.mozilla.org/en-US/docs/Web/API/CredentialsContainer).
+## 데이터 보호
+
+- `practice_documents.user_id`는 `auth.users.id`를 참조하며 사용자당 한 행만 허용합니다.
+- SELECT/INSERT/UPDATE/DELETE 정책마다 `(select auth.uid()) = user_id`를 검사합니다.
+- UPDATE 정책에는 `USING`과 `WITH CHECK`를 모두 둡니다.
+- 테이블은 RLS와 FORCE RLS를 활성화하고, `anon` 역할에는 테이블 권한을 주지 않습니다.
+- 브라우저에는 Supabase 세션과 오프라인용 로컬 사본만 저장합니다. 별도 GitHub PAT는 사용하지 않습니다.
+- 기존 로컬 레퍼토리는 로그인 전까지 삭제하거나 덮어쓰지 않습니다.
+
+## 확인
+
+```powershell
+node tools/test-supabase-storage.cjs
+```
+
+테스트는 가짜 Supabase 클라이언트를 사용하여 설정 누락, Magic Link 요청, 사용자별 조회, 자동 저장, 로그아웃을 검사합니다. 실제 프로젝트 적용 후에는 Supabase Security/Performance Advisors도 확인해야 합니다.
+
+참고 문서: [Passwordless email sign-in](https://supabase.com/docs/guides/auth/auth-email-passwordless), [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security), [Securing the Data API](https://supabase.com/docs/guides/api/securing-your-api)

@@ -54,10 +54,10 @@ h1 em { font-style:italic; color:var(--gold); }
 .hdr-btn-print { border:1px solid rgba(46,125,79,.4); background:rgba(46,125,79,.06); color:var(--green); }
 .hdr-btn-print:hover { background:rgba(46,125,79,.15); }
 
-/* ── Gist 동기화 버튼/상태 ── */
-.hdr-btn-gist { border:1px solid rgba(42,100,160,.35); background:rgba(42,100,160,.06); color:#2a64a0; position:relative; }
-.hdr-btn-gist:hover { background:rgba(42,100,160,.12); }
-.hdr-btn-gist.connected { border-color:rgba(46,125,79,.5); color:var(--green); background:rgba(46,125,79,.07); }
+/* ── Supabase 계정 동기화 버튼/상태 ── */
+.hdr-btn-cloud { border:1px solid rgba(42,100,160,.35); background:rgba(42,100,160,.06); color:#2a64a0; position:relative; }
+.hdr-btn-cloud:hover { background:rgba(42,100,160,.12); }
+.hdr-btn-cloud.connected { border-color:rgba(46,125,79,.5); color:var(--green); background:rgba(46,125,79,.07); }
 
 .sync-dot {
   width:6px; height:6px; border-radius:50%; flex-shrink:0;
@@ -789,7 +789,7 @@ h1 em { font-style:italic; color:var(--gold); }
   .hdr-btn, .filter-btn, .btn-add-piece, .tab-btn, .cat-tab { border-radius:8px; }
   .hdr-btn-ghost { background:rgba(255,255,255,.025); }
   .hdr-btn-print { background:rgba(112,215,162,.06); }
-  .hdr-btn-gist { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
+  .hdr-btn-cloud { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
   .score-open-btn { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
   .score-open-btn:hover { background:rgba(139,188,255,.14); }
   .tab-bar { gap:6px; padding:5px; border:1px solid var(--border); border-radius:12px; background:#0d1114; margin-bottom:24px; }
@@ -819,7 +819,6 @@ h1 em { font-style:italic; color:var(--gold); }
   .cal-popup { background:#11161a; box-shadow:0 14px 44px rgba(0,0,0,.55); }
   .modal-composer-input { background:#16130f; border-color:#554a37; color:#d8c39a; }
   .toast { background:#1a2025; box-shadow:0 10px 34px rgba(0,0,0,.5); }
-  #gistDiagBox { background:#0a0d0f !important; }
 
   .practice-view { display:none; }
   .practice-view.active { display:block; }
@@ -981,9 +980,9 @@ h1 em { font-style:italic; color:var(--gold); }
         <button class="hdr-btn hdr-btn-ghost" onclick="openAddCatModal()">＋ 카테고리</button>
         <button class="hdr-btn hdr-btn-ghost" onclick="importJSON()">📂 불러오기</button>
         <button class="hdr-btn hdr-btn-ghost" onclick="exportJSON()">💾 내보내기</button>
-        <button class="hdr-btn hdr-btn-gist" id="gistBtn" onclick="openGistModal()">
+        <button class="hdr-btn hdr-btn-cloud" id="cloudBtn" onclick="openCloudModal()">
           <span class="sync-dot" id="syncDot"></span>
-          <span id="gistBtnLabel">☁ Gist 연결</span>
+          <span id="cloudBtnLabel">☁ 계정 연결</span>
         </button>
         <button class="hdr-btn hdr-btn-print" onclick="printView()">🖨 인쇄 (PDF)</button>
       </div>
@@ -1347,54 +1346,41 @@ h1 em { font-style:italic; color:var(--gold); }
   </div>
 </div>
 
-<!-- ══ Gist 동기화 설정 모달 ══ -->
-<div class="modal-overlay" id="gistModal" onclick="if(event.target===this)closeGistModal()">
+<!-- ══ Supabase 계정/동기화 모달 ══ -->
+<div class="modal-overlay" id="cloudModal" onclick="if(event.target===this)closeCloudModal()">
   <div class="modal" style="max-width:440px">
-    <div class="modal-title" style="margin-bottom:6px">☁ GitHub Gist 동기화</div>
+    <div class="modal-title" style="margin-bottom:6px">☁ Supabase 계정 동기화</div>
     <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:18px">
-      두 값은 브라우저 비밀번호 관리자로 자동입력할 수 있습니다. 다른 컴퓨터에서는 같은 브라우저 계정의
-      비밀번호 동기화와 같은 사이트 주소가 필요합니다. 사이트 자체에는 토큰을 저장하지 않습니다.
+      이메일로 받은 로그인 링크를 누르면 레퍼토리와 연습 기록이 계정별로 안전하게 저장됩니다.
+      다른 컴퓨터에서도 같은 이메일로 로그인하면 동일한 데이터를 불러옵니다.
     </p>
 
-    <form id="gistCredentialForm" autocomplete="on" method="post" novalidate onsubmit="event.preventDefault(); connectGist();" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.target.matches('input[type=text],input[type=password]')){event.preventDefault();connectGist();}">
+    <form id="cloudAuthForm" autocomplete="on" novalidate onsubmit="event.preventDefault(); requestMagicLink();">
     <div class="form-row">
-      <label class="form-label" for="gistId">Gist ID (선택사항 · 토큰 입력 금지)</label>
-      <input class="form-input" id="gistId" name="gist-id" type="text" autocomplete="off" spellcheck="false" autocapitalize="none" oninput="handleGistIdInput()" placeholder="비워두면 기존 레퍼토리 Gist를 자동 검색">
+      <label class="form-label" for="cloudEmail">이메일</label>
+      <input class="form-input" id="cloudEmail" name="email" type="email" autocomplete="email" inputmode="email" required placeholder="로그인 링크를 받을 이메일">
     </div>
-    <div class="form-row">
-      <label class="form-label" for="gistToken">Personal Access Token *</label>
-      <input class="form-input" id="gistToken" name="password" type="password" autocomplete="current-password" spellcheck="false" autocapitalize="none" required placeholder="gist 권한의 토큰">
-    </div>
-    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:10px"><input type="checkbox" id="gistRemember" checked> 연결 성공 후 브라우저 비밀번호 관리자에 저장 요청</label>
-    <button type="button" class="btn-ghost" onclick="restoreGistAutofill(false)">🔑 저장된 두 값 자동입력</button>
-    <div id="gistCandidates" style="margin-top:10px"></div>
-    <p id="gistCredentialStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);line-height:1.7;margin:10px 0">처음 한 번 연결하고 브라우저의 저장 안내를 승인해주세요. 공용 PC에서는 저장하지 마세요.</p>
-    <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:12px"><input type="checkbox" id="gistCreateNew"> 기존 Gist가 없을 때 새 Secret Gist 생성 (링크를 아는 사람은 열람 가능)</label>
+    <p id="cloudAuthStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);line-height:1.7;margin:10px 0">비밀번호나 GitHub 토큰은 필요하지 않습니다.</p>
 
-    <div id="gistInfoBox" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--muted); line-height:1.6;">
-      <div>연결됨 · 마지막 동기화: <span id="gistLastSync">-</span></div>
-      <div style="margin-top:3px">Gist: <a id="gistLink" href="#" target="_blank" style="color:var(--gold)">열기 ↗</a></div>
+    <div id="cloudInfoBox" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--muted); line-height:1.6;">
+      <div>로그인 계정: <strong id="cloudUserEmail" style="color:var(--cream)">-</strong></div>
+      <div style="margin-top:3px">마지막 동기화: <span id="cloudLastSync">-</span></div>
     </div>
-
-    <!-- 진단 로그 -->
-    <div id="gistDiagBox" style="display:none; background:#faf5ec; border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:var(--muted); line-height:1.8; font-family:monospace; max-height:160px; overflow-y:auto; white-space:pre-wrap;"></div>
 
     <div class="modal-footer" style="margin-top:8px">
-      <button type="button" class="btn-danger" id="gistDisconnectBtn" style="display:none" onclick="disconnectGist()">연결 해제</button>
+      <button type="button" class="btn-danger" id="cloudSignOutBtn" style="display:none" onclick="signOutCloud()">로그아웃</button>
       <div class="footer-right" style="margin-left:auto; flex-wrap:wrap; gap:6px; justify-content:flex-end">
-        <button type="button" class="btn-ghost" id="gistDiagBtn" style="display:none; font-size:11px" onclick="runGistDiag()">🔍 진단</button>
-        <button type="button" class="btn-ghost" id="gistManualSyncBtn" style="display:none; font-size:11px" onclick="manualSyncFromGist()">⬇ 지금 불러오기</button>
-        <button type="button" class="btn-ghost" onclick="closeGistModal()">닫기</button>
-        <button type="button" id="gistConnectBtn" class="btn-primary" onclick="connectGist()">연결 / 저장</button>
+        <button type="button" class="btn-ghost" id="cloudRefreshBtn" style="display:none; font-size:11px" onclick="refreshFromCloud()">⬇ 지금 불러오기</button>
+        <button type="button" class="btn-ghost" onclick="closeCloudModal()">닫기</button>
+        <button type="submit" id="cloudSignInBtn" class="btn-primary">로그인 링크 받기</button>
       </div>
     </div>
     </form>
 
     <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.7">
-      <strong style="color:var(--gold); font-weight:400">토큰 만드는 법</strong><br>
-      github.com/settings/tokens → Generate new token (classic) → <strong style="color:var(--cream)">gist만</strong> 권한 체크 · 짧은 만료기간 권장.<br>
-      브라우저가 자동입력을 지원하지 않으면 비밀번호 관리자에서 이 사이트 항목을 직접 선택하세요.
-      저장·동기화 허용 여부는 브라우저가 결정합니다. 토큰은 사용 중에는 이 탭의 메모리에만 유지됩니다.
+      <strong style="color:var(--gold); font-weight:400">데이터 보호</strong><br>
+      각 계정은 데이터베이스 정책(RLS)에 의해 자신의 데이터만 읽고 수정할 수 있습니다.
+      로그인 전에는 이 기기의 로컬 데이터가 유지되고, 처음 로그인할 때 계정 저장소로 옮겨집니다.
     </div>
   </div>
 </div>
@@ -1413,112 +1399,10 @@ h1 em { font-style:italic; color:var(--gold); }
 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileImport(event)">
 <div class="toast" id="toast"></div>
 
-<script id="gist-auth-runtime">
-/* Credentials belong to the browser password manager, never app storage or Gist. */
-(function (root) {
-  'use strict';
-  const CONFIG_KEY = 'guitar_gist_config';
-  const PREFIX = 'c-repo-gist:';
-  const FILENAME = 'guitar_repertory.json';
-  function normalizeId(value) {
-    const id = String(value || '').trim().replace(/^c-repo-gist:/, '');
-    return /^[a-f0-9]{5,64}$/i.test(id) ? id.toLowerCase() : '';
-  }
-  function save(config) {
-    const safe = { gistId: normalizeId(config.gistId), autofillPaused: !!config.autofillPaused };
-    // Remove the old record first so a failed write cannot leave a legacy PAT behind.
-    try { root.localStorage.removeItem(CONFIG_KEY); root.localStorage.setItem(CONFIG_KEY, JSON.stringify(safe)); }
-    catch (_) { /* Storage may be disabled. The current tab remains usable. */ }
-  }
-  function load() {
-    let value = {};
-    try { value = JSON.parse(root.localStorage.getItem(CONFIG_KEY) || '{}') || {}; } catch (_) {}
-    const config = { gistId: normalizeId(value.gistId), token: typeof value.token === 'string' ? value.token : '', autofillPaused: !!value.autofillPaused };
-    save(config); // Legacy PAT is retained in memory for this tab only, and removed from disk.
-    return config;
-  }
-  function supported() {
-    return root.isSecureContext && typeof root.PasswordCredential === 'function' && !!root.navigator.credentials;
-  }
-  function bounded(promise, milliseconds) {
-    let timer;
-    return Promise.race([promise, new Promise((_, reject) => {
-      timer = root.setTimeout(() => reject(new Error('연결 응답 대기시간 초과')), milliseconds);
-    })]).finally(() => root.clearTimeout(timer));
-  }
-  async function restore(silent) {
-    if (!supported()) return null;
-    try {
-      const entry = await bounded(root.navigator.credentials.get({ password: true, mediation: silent ? 'silent' : 'required' }), silent ? 3000 : 60000);
-      // Never send another application's saved password to GitHub.
-      if (!entry || entry.type !== 'password' || !entry.id.startsWith(PREFIX)) return null;
-      const gistId = normalizeId(entry.id);
-      return gistId && entry.password ? { gistId, token: entry.password } : null;
-    } catch (_) { return null; }
-  }
-  async function remember(config) {
-    if (!supported()) return false;
-    try {
-      await bounded(root.navigator.credentials.store(new root.PasswordCredential({
-        id: PREFIX + normalizeId(config.gistId), password: config.token, name: '클래식기타 레퍼토리 Gist'
-      })), 60000);
-      return true;
-    } catch (_) { return false; }
-  }
-  async function pause() {
-    try { await root.navigator.credentials?.preventSilentAccess(); } catch (_) {}
-  }
-  async function request(path, token, options = {}) {
-    const controller = new root.AbortController();
-    const timer = root.setTimeout(() => controller.abort(), 15000);
-    try {
-    const res = await root.fetch('https://api.github.com' + path, {
-      ...options, credentials: 'omit', cache: 'no-store', redirect: 'error',
-      signal: controller.signal,
-      headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-    });
-    // Do not echo response bodies or fetch exceptions that might contain private data.
-    if (!res.ok) throw new Error(`GitHub 응답 ${res.status}: 토큰 만료·gist 권한·Gist ID를 확인해주세요.`);
-    return await res.json();
-    } finally { root.clearTimeout(timer); }
-  }
-  async function find(token) {
-    const found = new Map();
-    for (let page = 1; page <= 20; page++) {
-      const list = await request(`/gists?per_page=100&page=${page}`, token);
-      if (!Array.isArray(list)) throw new Error('Gist 목록 형식이 올바르지 않습니다.');
-      for (const gist of list) {
-        const id = normalizeId(gist.id);
-        if (id && gist.files?.[FILENAME]) found.set(id, { id, description: gist.description || '기타 레퍼토리', updatedAt: gist.updated_at || '' });
-      }
-      if (list.length < 100) return [...found.values()];
-    }
-    throw new Error('Gist가 많아 검색을 완료하지 못했습니다. 사용할 Gist ID를 직접 입력해주세요.');
-  }
-  function parse(gist) {
-    const file = gist.files?.[FILENAME];
-    if (!file || file.truncated || typeof file.content !== 'string') throw new Error('레퍼토리 파일이 없거나 너무 큽니다. Gist ID를 확인해주세요.');
-    let data;
-    try { data = JSON.parse(file.content); } catch (_) { throw new Error('레퍼토리 JSON 형식이 올바르지 않습니다.'); }
-    if (!Array.isArray(data?.categories) || !data.state || typeof data.state !== 'object' || Array.isArray(data.state) || !data.state.pieces || typeof data.state.pieces !== 'object' || Array.isArray(data.state.pieces)) {
-      throw new Error('레퍼토리 데이터 형식이 올바르지 않습니다.');
-    }
-    if (!data.categories.every(cat => cat && typeof cat.id === 'string' && typeof cat.name === 'string' && Array.isArray(cat.pieces) && cat.pieces.every(p => p && typeof p.title === 'string')) ||
-        !Object.values(data.state.pieces).every(piece => piece && typeof piece === 'object' && !Array.isArray(piece))) {
-      throw new Error('레퍼토리 곡 목록 형식이 올바르지 않습니다.');
-    }
-    if (!data.state.collapsed || typeof data.state.collapsed !== 'object' || Array.isArray(data.state.collapsed)) data.state.collapsed = {};
-    return data;
-  }
-  async function read(token, id) {
-    id = normalizeId(id);
-    if (!id) throw new Error('Gist ID 형식이 올바르지 않습니다.');
-    return parse(await request(`/gists/${id}`, token));
-  }
-  root.GistAuth = Object.freeze({ normalizeId, load, save, supported, restore, remember, pause, find, read, request, parse });
-})(globalThis);
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script src="supabase-storage.js"></script>
+
 <script>
 /* ══════════════ INITIAL DATA ══════════════ */
 const INITIAL_CATEGORIES = [
@@ -1765,7 +1649,7 @@ function loadAll() {
 
 function saveAll() {
   try { localStorage.setItem('guitar_repertory_v4',JSON.stringify({categories,state})); } catch(e){}
-  scheduleGistUpload(); // 변경될 때마다 Gist 자동 업로드 예약 (디바운스)
+  scheduleCloudSave(); // 로그인 상태에서는 Supabase에 자동 저장 (디바운스)
 }
 
 function getPieceData(title) {
@@ -3106,444 +2990,207 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('confirmOverlay').classList.contains('open'))closeConfirm();
     else if(document.getElementById('setlistPickerModal').classList.contains('open'))closeSetlistPicker();
-    else if(document.getElementById('gistModal').classList.contains('open'))closeGistModal();
+    else if(document.getElementById('cloudModal').classList.contains('open'))closeCloudModal();
     else if(document.getElementById('addCatModal').classList.contains('open'))closeAddCatModal();
     else if(document.getElementById('addPieceModal').classList.contains('open'))closeAddModal();
     else if(document.getElementById('modal').classList.contains('open'))closeModal();
   }
 });
 
-/* ══════════════ GITHUB GIST 자동 동기화 ══════════════ */
-const GIST_FILENAME = 'guitar_repertory.json';
-let gistConfig = { token:'', gistId:'' };
-let gistUploadTimer = null;
-let gistSyncing = false;
-let gistConnecting = false;
-let gistAuthVersion = 0;
-let gistBootstrapping = true;
+let cloudSaveTimer = null;
+let cloudSyncing = false;
+let cloudApplyingRemote = false;
+let cloudUser = null;
+let cloudLoadedUserId = null;
 
-function loadGistConfig() {
-  gistConfig = GistAuth.load();
+function validPracticePayload(payload) {
+  return !!(payload && Array.isArray(payload.categories) && payload.state &&
+    typeof payload.state === 'object' && payload.state.pieces && typeof payload.state.pieces === 'object');
 }
 
-function saveGistConfig() {
-  GistAuth.save(gistConfig);
+function setSyncStatus(status, msg) {
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncStatusText');
+  const label = document.getElementById('cloudBtnLabel');
+  const button = document.getElementById('cloudBtn');
+  if (!dot || !label || !button) return;
+  dot.className = 'sync-dot' + (status !== 'idle' ? ' ' + status : '');
+  if (text) text.textContent = msg || '';
+  if (cloudUser) {
+    button.classList.add('connected');
+    label.textContent = status === 'syncing' ? '☁ 동기화 중...' : '☁ 계정 연결됨';
+  } else {
+    button.classList.remove('connected');
+    label.textContent = '☁ 계정 연결';
+  }
 }
 
-function credentialStatus(message, tone = 'normal') {
-  const status = document.getElementById('gistCredentialStatus');
+function cloudStatus(message, tone = 'normal') {
+  const status = document.getElementById('cloudAuthStatus');
+  if (!status) return;
   status.textContent = message;
   status.style.color = tone === 'error' ? 'var(--red)' : tone === 'success' ? 'var(--green)' : 'var(--muted)';
   status.style.fontWeight = tone === 'error' ? '600' : '400';
 }
 
-function looksLikeGitHubToken(value) {
-  return /^(?:gh[pousr]_|github_pat_)/i.test(String(value || '').trim());
+function updateCloudModal() {
+  const signedIn = !!cloudUser;
+  document.getElementById('cloudInfoBox').style.display = signedIn ? 'block' : 'none';
+  document.getElementById('cloudSignOutBtn').style.display = signedIn ? 'inline-block' : 'none';
+  document.getElementById('cloudRefreshBtn').style.display = signedIn ? 'inline-block' : 'none';
+  document.getElementById('cloudSignInBtn').style.display = signedIn ? 'none' : 'inline-block';
+  document.getElementById('cloudEmail').closest('.form-row').style.display = signedIn ? 'none' : 'block';
+  document.getElementById('cloudUserEmail').textContent = cloudUser?.email || '-';
+  const lastSync = localStorage.getItem('guitar_supabase_last_sync');
+  document.getElementById('cloudLastSync').textContent = lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '-';
 }
 
-function handleGistIdInput() {
-  const idInput = document.getElementById('gistId');
-  const tokenInput = document.getElementById('gistToken');
-  const value = idInput.value.trim();
-  if (!looksLikeGitHubToken(value)) return false;
-  if (!tokenInput.value.trim()) tokenInput.value = value;
-  idInput.value = '';
-  idInput.style.borderColor = 'var(--red)';
-  tokenInput.style.borderColor = 'var(--gold)';
-  credentialStatus('Personal Access Token을 Gist ID 칸에서 제거했습니다. Gist ID는 비워두어도 됩니다. 새 토큰은 아래 칸에만 입력하세요.', 'error');
-  showToast('토큰은 Personal Access Token 칸에만 입력해주세요');
-  setTimeout(() => { idInput.style.borderColor=''; tokenInput.style.borderColor=''; }, 2400);
-  return true;
+function openCloudModal() {
+  updateCloudModal();
+  if (!CRepoSupabase?.configured()) {
+    cloudStatus('Supabase 프로젝트 연결 설정이 필요합니다. 현재 데이터는 이 기기에 안전하게 유지됩니다.', 'error');
+  } else if (cloudUser) {
+    cloudStatus('이 계정의 데이터와 자동 동기화 중입니다.', 'success');
+  } else {
+    cloudStatus('이메일로 로그인 링크를 보내드립니다. 비밀번호는 필요하지 않습니다.');
+  }
+  document.getElementById('cloudModal').classList.add('open');
 }
 
-async function restoreGistAutofill(silent = false) {
-  if (gistConnecting || (silent && gistConfig.autofillPaused)) return;
-  const version = gistAuthVersion;
-  const entry = await GistAuth.restore(silent);
-  if (version !== gistAuthVersion || gistConnecting) return;
-  if (!entry) {
-    if (!silent) credentialStatus('자동입력 정보를 가져오지 못했습니다. 입력칸의 비밀번호 관리자에서 이 사이트 항목을 선택하거나 처음 한 번 입력해주세요.');
+function closeCloudModal() {
+  document.getElementById('cloudModal').classList.remove('open');
+}
+
+async function requestMagicLink() {
+  const email = document.getElementById('cloudEmail').value.trim();
+  const button = document.getElementById('cloudSignInBtn');
+  if (!email || !document.getElementById('cloudEmail').checkValidity()) {
+    cloudStatus('올바른 이메일 주소를 입력해주세요.', 'error');
+    document.getElementById('cloudEmail').focus();
     return;
   }
-  document.getElementById('gistId').value = entry.gistId;
-  document.getElementById('gistToken').value = entry.token;
-  credentialStatus('브라우저에서 두 값을 불러왔습니다.');
-  if (silent) await connectGist({ automatic: true });
-}
-
-async function initializeGistSync() {
+  button.disabled = true;
+  button.textContent = '링크 보내는 중…';
   try {
-    if (isGistConnected()) await syncFromGistOnLoad();
-    else {
-      setSyncStatus('idle', '☁ Gist 연결에서 저장된 정보를 자동입력할 수 있습니다');
-      await restoreGistAutofill(true);
-    }
-  } finally { gistBootstrapping = false; }
-}
-
-function isGistConnected() {
-  return !!(gistConfig.token && gistConfig.gistId);
-}
-
-function setSyncStatus(status, msg) {
-  // status: 'idle' | 'syncing' | 'synced' | 'error'
-  const dot = document.getElementById('syncDot');
-  const text = document.getElementById('syncStatusText');
-  const btnLabel = document.getElementById('gistBtnLabel');
-  const btn = document.getElementById('gistBtn');
-  if (!dot) return;
-
-  dot.className = 'sync-dot' + (status !== 'idle' ? ' ' + status : '');
-  if (text) text.textContent = msg || '';
-
-  if (isGistConnected()) {
-    btn.classList.add('connected');
-    btnLabel.textContent = status === 'syncing' ? '☁ 동기화 중...' : '☁ Gist 연결됨';
-  } else {
-    btn.classList.remove('connected');
-    btnLabel.textContent = '☁ Gist 연결';
+    await CRepoSupabase.signIn(email);
+    cloudStatus('로그인 링크를 보냈습니다. 이메일에서 링크를 누르면 자동 연결됩니다.', 'success');
+    showToast('로그인 이메일을 확인해주세요');
+  } catch (error) {
+    cloudStatus('로그인 링크 전송 실패: ' + (error?.message || 'Supabase 설정을 확인해주세요.'), 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = '로그인 링크 받기';
   }
 }
 
-/* ── 모달 ── */
-function openGistModal() {
-  // Do not erase credentials already autofilled by the browser.
-  if (gistConfig.token) document.getElementById('gistToken').value = gistConfig.token;
-  if (!document.getElementById('gistId').value) document.getElementById('gistId').value = gistConfig.gistId || '';
-  const infoBox = document.getElementById('gistInfoBox');
-  const disconnectBtn = document.getElementById('gistDisconnectBtn');
-  const diagBtn = document.getElementById('gistDiagBtn');
-  const manualBtn = document.getElementById('gistManualSyncBtn');
-  const diagBox = document.getElementById('gistDiagBox');
-  if (isGistConnected()) {
-    infoBox.style.display = 'block';
-    disconnectBtn.style.display = 'inline-block';
-    diagBtn.style.display = 'inline-block';
-    manualBtn.style.display = 'inline-block';
-    diagBox.style.display = 'none';
-    document.getElementById('gistLink').href = `https://gist.github.com/${gistConfig.gistId}`;
-    const lastSync = localStorage.getItem('guitar_gist_last_sync');
-    document.getElementById('gistLastSync').textContent = lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '-';
-  } else {
-    infoBox.style.display = 'none';
-    disconnectBtn.style.display = 'none';
-    diagBtn.style.display = 'none';
-    manualBtn.style.display = 'none';
-    diagBox.style.display = 'none';
-  }
-  document.getElementById('gistModal').classList.add('open');
-}
-
-function diagLog(msg) {
-  const box = document.getElementById('gistDiagBox');
-  box.style.display = 'block';
-  box.textContent += new Date().toLocaleTimeString('ko-KR') + ' ' + msg + '\n';
-  box.scrollTop = box.scrollHeight;
-}
-
-async function runGistDiag() {
-  const box = document.getElementById('gistDiagBox');
-  box.textContent = '';
-  box.style.display = 'block';
-
-  diagLog('=== Gist 진단 시작 ===');
-  diagLog('Token: ' + (gistConfig.token ? '설정됨' : '없음'));
-  diagLog('Gist ID: ' + (gistConfig.gistId || '없음'));
-  diagLog('isConnected: ' + isGistConnected());
-
-  if (!isGistConnected()) { diagLog('✗ 연결 정보 없음'); return; }
-
-  diagLog('GitHub API 호출 중...');
+async function signOutCloud() {
+  clearTimeout(cloudSaveTimer);
   try {
-    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
-      headers: { 'Authorization': `token ${gistConfig.token}`, 'Accept': 'application/vnd.github+json' }
-    });
-    diagLog('HTTP 응답: ' + res.status + ' ' + res.statusText);
-
-    if (!res.ok) {
-      diagLog('✗ 요청 실패: 토큰 만료·gist 권한·Gist ID를 확인해주세요.');
-      return;
-    }
-
-    const gist = await res.json();
-    diagLog('Gist 설명: ' + (gist.description || '-'));
-    diagLog('파일 목록: ' + Object.keys(gist.files).join(', '));
-
-    const file = gist.files[GIST_FILENAME];
-    if (!file) { diagLog('✗ guitar_repertory.json 파일 없음'); return; }
-    diagLog('파일 크기: ' + file.size + ' bytes');
-    diagLog('truncated: ' + file.truncated);
-
-    const content = file.content ? JSON.parse(file.content) : null;
-    if (!content) { diagLog('✗ 파일 내용 파싱 실패'); return; }
-    diagLog('✓ categories: ' + (content.categories?.length || 0) + '개');
-    diagLog('✓ pieces: ' + Object.keys(content.state?.pieces || {}).length + '개');
-
-    // 악보 링크 있는 곡 확인
-    const withScore = Object.entries(content.state?.pieces || {})
-      .filter(([,d]) => d.scoreLink).map(([t]) => t);
-    diagLog('악보 링크 있는 곡: ' + (withScore.length ? withScore.join(', ') : '없음'));
-    diagLog('✓ 진단 완료 — 데이터 정상');
-  } catch(e) {
-    diagLog('✗ 진단 실패: 파일 형식 또는 네트워크를 확인해주세요.');
+    await CRepoSupabase.signOut();
+    cloudUser = null;
+    cloudLoadedUserId = null;
+    updateCloudModal();
+    setSyncStatus('idle', '로그아웃됨 · 이 기기의 로컬 데이터는 유지됩니다');
+    showToast('로그아웃되었습니다');
+  } catch (error) {
+    cloudStatus('로그아웃 실패: ' + (error?.message || '잠시 후 다시 시도해주세요.'), 'error');
   }
 }
 
-async function manualSyncFromGist() {
-  if (!isGistConnected() || gistConnecting) return;
-  const version = gistAuthVersion;
-  diagLog('=== 수동 불러오기 시작 ===');
+function applyCloudPayload(payload) {
+  if (!validPracticePayload(payload)) throw new Error('저장된 데이터 형식이 올바르지 않습니다.');
+  cloudApplyingRemote = true;
   try {
-    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
-      headers: { 'Authorization': `token ${gistConfig.token}`, 'Accept': 'application/vnd.github+json' }
-    });
-    diagLog('HTTP: ' + res.status);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const gist = await res.json();
-    const remote = GistAuth.parse(gist);
-    if (version !== gistAuthVersion) return;
-    categories = remote.categories;
-    state = remote.state;
+    categories = payload.categories;
+    state = payload.state;
     fillDefaultDurations();
     seedPracticeNotes();
-    try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
-    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
+    localStorage.setItem('guitar_repertory_v4', JSON.stringify({ categories, state }));
     render();
-    setSyncStatus('synced', '✓ Gist에서 불러옴 · ' + new Date().toLocaleTimeString('ko-KR'));
-    diagLog('✓ 불러오기 성공! categories: ' + categories.length + '개, pieces: ' + Object.keys(state.pieces).length + '개');
-    const withScore = Object.entries(state.pieces).filter(([,d])=>d.scoreLink).map(([t])=>t);
-    diagLog('악보 링크: ' + (withScore.length ? withScore.join(', ') : '없음'));
-  } catch(e) {
-    if (version !== gistAuthVersion) return;
-    diagLog('✗ 불러오기 실패: 토큰 권한·Gist 파일·네트워크를 확인해주세요.');
-    setSyncStatus('error', '불러오기 실패 (로컬 데이터 유지)');
+  } finally {
+    cloudApplyingRemote = false;
   }
 }
-function closeGistModal() {
-  document.getElementById('gistModal').classList.remove('open');
-  document.getElementById('gistToken').value = '';
-}
 
-function disconnectGist() {
-  openConfirm('Gist 연결을 해제하시겠어요?<br>로컬 연습 데이터는 유지됩니다. 브라우저에 저장된 항목은 비밀번호 관리자에서 직접 삭제해주세요.', () => {
-    gistAuthVersion++;
-    clearTimeout(gistUploadTimer);
-    gistConfig = { token:'', gistId:'', autofillPaused:true };
-    saveGistConfig();
-    GistAuth.pause();
-    document.getElementById('gistId').value = '';
-    document.getElementById('gistCandidates').replaceChildren();
-    setSyncStatus('idle','');
-    closeGistModal();
-    showToast('Gist 연결이 해제되었습니다');
-  });
-}
-
-/* ── 연결 + 최초 동기화 ── */
-async function connectGist({ automatic = false } = {}) {
-  if (gistConnecting || gistSyncing) { credentialStatus('진행 중인 동기화가 끝난 뒤 다시 시도해주세요.'); return; }
-  handleGistIdInput();
-  const token = document.getElementById('gistToken').value.trim();
-  const enteredId = document.getElementById('gistId').value.trim();
-  if (typeof GistAuth === 'undefined') {
-    credentialStatus('연결 기능을 불러오지 못했습니다. Ctrl+F5로 새로고침한 뒤 다시 시도해주세요.');
-    return;
-  }
-  let gistId = GistAuth.normalizeId(enteredId);
-
-  if (!token) {
-    const el = document.getElementById('gistToken');
-    el.style.borderColor = 'var(--red)';
-    setTimeout(()=>el.style.borderColor='',1200);
-    credentialStatus('Personal Access Token을 입력하거나 저장된 두 값 자동입력을 눌러주세요.');
-    el.focus();
-    showToast('Token을 입력해주세요');
-    return;
-  }
-
-  if (enteredId && !gistId) {
-    credentialStatus('Gist ID는 보통 영문·숫자로 된 식별자입니다. 모르면 칸을 비워두세요. 기존 Gist를 자동으로 찾습니다.', 'error');
-    document.getElementById('gistId').focus();
-    return;
-  }
-  const version = ++gistAuthVersion;
-  gistConnecting = true;
-  clearTimeout(gistUploadTimer);
-  document.getElementById('gistConnectBtn').disabled = true;
-  document.getElementById('gistConnectBtn').textContent = '연결 확인 중…';
-  credentialStatus(gistId ? 'GitHub에서 연결을 확인하고 있습니다…' : '기존 레퍼토리 Gist를 검색하고 있습니다…');
-  setSyncStatus('syncing', 'Gist 연결 확인 중...');
-
+async function syncCloudAccount() {
+  if (!cloudUser || cloudSyncing) return;
+  cloudSyncing = true;
+  setSyncStatus('syncing', 'Supabase에서 데이터를 확인하는 중...');
   try {
-    if (!gistId) {
-      const matches = await GistAuth.find(token);
-      if (version !== gistAuthVersion) return;
-      const host = document.getElementById('gistCandidates');
-      host.replaceChildren();
-      if (matches.length > 1) {
-        matches.forEach(match => {
-          const button = document.createElement('button');
-          button.type = 'button'; button.className = 'btn-ghost';
-          button.textContent = `${match.description} · ${match.id.slice(0,8)}…`;
-          button.addEventListener('click', () => {
-            document.getElementById('gistId').value = match.id;
-            host.replaceChildren();
-            credentialStatus('Gist를 선택했습니다. 연결 / 저장을 눌러주세요.');
-          });
-          host.appendChild(button);
-        });
-        credentialStatus('레퍼토리 Gist가 여러 개입니다. 사용할 항목을 선택해주세요.');
-        setSyncStatus('idle', 'Gist 선택 필요');
-        return;
-      }
-      if (matches.length === 1) gistId = matches[0].id;
-      else if (automatic || !document.getElementById('gistCreateNew').checked) {
-        credentialStatus('기존 레퍼토리 Gist를 찾지 못했습니다. ID를 직접 입력하거나 새 Gist 생성에 체크해주세요.');
-        setSyncStatus('idle', '기존 Gist 없음');
-        return;
-      }
-    }
-    let remote;
-    if (gistId) {
-      remote = await GistAuth.read(token, gistId);
+    const remote = await CRepoSupabase.load();
+    if (remote?.payload) {
+      applyCloudPayload(remote.payload);
     } else {
-      // Creating a Gist requires the explicit checkbox; discovery alone is read-only.
-      const gist = await GistAuth.request('/gists', token, {
-        method: 'POST',
-        body: JSON.stringify({
-          description: 'Classical Guitar Repertory (auto-sync)',
-          public: false,
-          files: { [GIST_FILENAME]: { content: JSON.stringify({categories,state},null,2) } }
-        })
-      });
-      gistId = GistAuth.normalizeId(gist.id);
-      if (!gistId) throw new Error('생성된 Gist ID 형식 오류');
+      await CRepoSupabase.save({ categories, state });
     }
-    if (version !== gistAuthVersion) return;
-    // Commit the token and ID together only after successful validation.
-    gistConfig = { token, gistId, autofillPaused:false };
-    document.getElementById('gistId').value = gistId;
-    if (remote) {
-      categories = remote.categories; state = remote.state;
-      fillDefaultDurations(); seedPracticeNotes();
-      try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch (_) {}
-      render();
-    }
-    saveGistConfig();
-    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
-    setSyncStatus('synced', '✓ Gist 연결됨 · 자동 동기화 활성화');
-    if (!automatic && document.getElementById('gistRemember').checked) {
-      // A browser/OS password prompt may stay pending indefinitely. It must not lock connection UI.
-      void GistAuth.remember({ token, gistId }).then(saved => {
-        if (version !== gistAuthVersion) return;
-        credentialStatus(saved ? '브라우저 저장 요청 완료 · 다른 PC에서는 비밀번호 동기화를 켜주세요.' : '연결은 완료됐습니다. 비밀번호 관리자 저장은 브라우저 안내를 확인해주세요.');
-      });
-      showToast('Gist 연결 완료 · 비밀번호 저장은 브라우저 안내에서 승인해주세요');
-    } else if (!automatic) showToast('연결 완료 · 토큰은 이 탭에서만 유지됩니다');
-    closeGistModal();
-  } catch (err) {
-    if (version !== gistAuthVersion) return;
-    const message = '연결 실패: 토큰 만료·gist 권한·Gist ID 또는 네트워크를 확인해주세요.';
-    credentialStatus(message);
-    setSyncStatus('error', message);
-    if (!automatic) showToast(message);
+    const timestamp = remote?.updated_at || new Date().toISOString();
+    localStorage.setItem('guitar_supabase_last_sync', timestamp);
+    setSyncStatus('synced', '✓ 계정과 동기화됨 · ' + new Date(timestamp).toLocaleTimeString('ko-KR'));
+    updateCloudModal();
+  } catch (error) {
+    setSyncStatus('error', '동기화 실패 · 로컬 데이터는 유지됩니다');
+    cloudStatus('동기화 실패: ' + (error?.message || '데이터베이스 설정을 확인해주세요.'), 'error');
   } finally {
-    gistConnecting = false;
-    document.getElementById('gistConnectBtn').disabled = false;
-    document.getElementById('gistConnectBtn').textContent = '연결 / 저장';
+    cloudSyncing = false;
   }
 }
 
-/* ── 자동 업로드 (디바운스) ── */
-function scheduleGistUpload() {
-  if (!isGistConnected() || gistConnecting || gistBootstrapping) return;
-  clearTimeout(gistUploadTimer);
-  setSyncStatus('syncing', '동기화 대기 중...');
-  gistUploadTimer = setTimeout(uploadToGist, 1500); // 1.5초 디바운스 — 연속 변경 시 한번만 업로드
+async function refreshFromCloud() {
+  if (!cloudUser || cloudSyncing) return;
+  cloudLoadedUserId = null;
+  await syncCloudAccount();
+  showToast('계정 데이터를 불러왔습니다');
 }
 
-async function uploadToGist(force=false) {
-  if (!isGistConnected() || gistConnecting || (gistSyncing && !force)) return;
-  gistSyncing = true;
-  setSyncStatus('syncing', 'Gist에 업로드 중...');
+function scheduleCloudSave() {
+  if (!cloudUser || cloudApplyingRemote) return;
+  clearTimeout(cloudSaveTimer);
+  setSyncStatus('syncing', '변경사항 저장 대기 중...');
+  cloudSaveTimer = setTimeout(saveToCloud, 1200);
+}
+
+async function saveToCloud() {
+  if (!cloudUser || cloudSyncing || cloudApplyingRemote) return;
+  cloudSyncing = true;
+  setSyncStatus('syncing', 'Supabase에 저장 중...');
   try {
-    const payload = JSON.stringify({categories,state},null,2);
-    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `token ${gistConfig.token}`,
-        'Accept':'application/vnd.github+json',
-        'Content-Type':'application/json'
-      },
-      body: JSON.stringify({
-        files: { [GIST_FILENAME]: { content: payload } }
-      })
-    });
-    if (!res.ok) throw new Error(`업로드 실패 (${res.status})`);
-    // localStorage도 최신 상태로 갱신
-    try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
-    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
-    setSyncStatus('synced', '✓ 마지막 동기화: ' + new Date().toLocaleTimeString('ko-KR'));
-  } catch (err) {
-    setSyncStatus('error', '동기화 실패: ' + err.message);
+    const result = await CRepoSupabase.save({ categories, state });
+    const timestamp = result?.updated_at || new Date().toISOString();
+    localStorage.setItem('guitar_supabase_last_sync', timestamp);
+    setSyncStatus('synced', '✓ 마지막 동기화: ' + new Date(timestamp).toLocaleTimeString('ko-KR'));
+    updateCloudModal();
+  } catch (error) {
+    setSyncStatus('error', '저장 실패 · 변경사항은 이 기기에 보관됨');
   } finally {
-    gistSyncing = false;
+    cloudSyncing = false;
   }
 }
 
-/* ── 시작 시 자동으로 Gist에서 최신 데이터 받아오기 ── */
-async function syncFromGistOnLoad() {
-  if (!isGistConnected()) { setSyncStatus('idle',''); return; }
-  const version = gistAuthVersion;
-  setSyncStatus('syncing', 'Gist에서 불러오는 중...');
+async function handleCloudAuthChange({ event, user }) {
+  cloudUser = user || null;
+  updateCloudModal();
+  if (!cloudUser) {
+    cloudLoadedUserId = null;
+    setSyncStatus('idle', CRepoSupabase.configured() ? '☁ 로그인하면 여러 기기에서 자동 동기화됩니다' : 'Supabase 프로젝트 설정 필요 · 현재는 로컬 저장');
+    return;
+  }
+  if (cloudLoadedUserId === cloudUser.id && event !== 'USER_UPDATED') return;
+  cloudLoadedUserId = cloudUser.id;
+  await syncCloudAccount();
+}
+
+async function initializeSupabaseSync() {
   try {
-    const res = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
-      headers: { 'Authorization': `token ${gistConfig.token}`, 'Accept':'application/vnd.github+json' }
-    });
-    if (!res.ok) throw new Error(`불러오기 실패 (${res.status})`);
-    const gist = await res.json();
-    const remote = GistAuth.parse(gist);
-    if (version !== gistAuthVersion) return;
-    {
-      if (remote.categories && remote.state) {
-
-        // ── 스마트 병합: 로컬에만 있는 scoreLink 등 필드를 Gist 데이터에 합칩니다 ──
-        // 로컬 state.pieces의 각 곡별 데이터를 원격과 병합
-        Object.entries(state.pieces || {}).forEach(([title, localPiece]) => {
-          if (remote.state.pieces[title]) {
-            // 원격에 없는 필드는 로컬 값으로 채움 (scoreLink, memo 등)
-            if (localPiece.scoreLink && !remote.state.pieces[title].scoreLink) {
-              remote.state.pieces[title].scoreLink = localPiece.scoreLink;
-            }
-            if (localPiece.memo && !remote.state.pieces[title].memo) {
-              remote.state.pieces[title].memo = localPiece.memo;
-            }
-          }
-        });
-
-        categories = remote.categories;
-        state = remote.state;
-    fillDefaultDurations();
-        seedPracticeNotes();
-        try { localStorage.setItem('guitar_repertory_v4', JSON.stringify({categories,state})); } catch(e){}
-        render();
-
-        // Credential restoration is read-only. Upload only after an actual user edit.
-      }
-    }
-    localStorage.setItem('guitar_gist_last_sync', new Date().toISOString());
-    setSyncStatus('synced', '✓ Gist와 동기화됨 · ' + new Date().toLocaleTimeString('ko-KR'));
-  } catch (err) {
-    if (version !== gistAuthVersion) return;
-    setSyncStatus('error', '불러오기 실패: 토큰 권한·Gist 파일·네트워크 확인 (로컬 데이터 사용)');
+    await CRepoSupabase.init(handleCloudAuthChange);
+  } catch (error) {
+    setSyncStatus('error', 'Supabase 초기화 실패 · 현재는 로컬 저장');
   }
 }
 
 /* ══════════════ INIT ══════════════ */
-loadGistConfig();
 loadAll();
 render();
-initializeGistSync(); // Browser-controlled restoration; the app never persists a PAT.
+initializeSupabaseSync();
 </script>
 </body>
 </html>
