@@ -562,9 +562,14 @@ h1 em { font-style:italic; color:var(--gold); }
 .concert-picker { display:flex; gap:8px; margin-bottom:10px; }
 .concert-picker select { flex:1; min-width:0; }
 .concert-piece-list { display:flex; flex-direction:column; gap:6px; }
-.concert-piece-row { display:flex; align-items:center; gap:10px; padding:9px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; }
+.concert-piece-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:9px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; }
 .concert-piece-index { color:var(--gold); font-family:'Noto Serif KR',serif; font-size:14px; min-width:20px; }
 .concert-piece-name { flex:1; min-width:0; color:var(--cream); font-size:14px; }
+.concert-piece-edit { border:0; padding:0; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; text-decoration:underline; text-decoration-color:rgba(215,181,109,.45); text-underline-offset:3px; }
+.concert-piece-edit:hover { color:var(--gold2); }
+.concert-piece-ment { flex-basis:100%; display:grid; grid-template-columns:minmax(0,1fr) 110px; gap:8px; padding-top:10px; border-top:1px solid rgba(215,181,109,.12); }
+.concert-piece-ment label { display:block; color:var(--muted); font-size:11px; letter-spacing:.6px; margin-bottom:4px; }
+.concert-piece-ment textarea { min-height:58px; resize:vertical; line-height:1.55; }
 .concert-piece-meta { color:var(--muted); font-size:12px; white-space:nowrap; }
 .concert-piece-actions { display:flex; gap:3px; }
 .concert-icon-btn { border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--muted); padding:3px 7px; cursor:pointer; font:inherit; }
@@ -1674,8 +1679,20 @@ function ensureConcertPlans() {
     const defaults={id:`concert_${Date.now()}_${index}`,title:'새 연주회',date:'',time:'',venue:'',comment:'',pieces:[]};
     Object.entries(defaults).forEach(([key,value])=>{ if (plan[key]===undefined || plan[key]===null) { plan[key]=value; changed=true; } });
     if (!Array.isArray(plan.pieces)) { plan.pieces=[]; changed=true; }
-    const uniquePieces=[...new Set(plan.pieces.filter(title=>typeof title==='string' && state.pieces?.[title]))];
-    if (uniquePieces.length!==plan.pieces.length) { plan.pieces=uniquePieces; changed=true; }
+    const seen=new Set();
+    const normalizedPieces=plan.pieces.reduce((items,entry)=>{
+      const title=typeof entry==='string' ? entry : entry?.title;
+      if (typeof title!=='string' || !state.pieces?.[title] || seen.has(title)) { changed=true; return items; }
+      seen.add(title);
+      const comment=typeof entry==='object' && typeof entry.comment==='string' ? entry.comment : '';
+      const rawDuration=typeof entry==='object' ? entry.commentDuration : null;
+      const commentDuration=typeof rawDuration==='number' ? Math.max(0,Math.round(rawDuration)) : parseDurationInput(String(rawDuration||''));
+      const item={title,comment,commentDuration:commentDuration??null};
+      if (typeof entry==='string' || entry.comment!==comment || entry.commentDuration!==item.commentDuration) changed=true;
+      items.push(item);
+      return items;
+    },[]);
+    if (normalizedPieces.length!==plan.pieces.length || normalizedPieces.some((item,i)=>item!==plan.pieces[i])) { plan.pieces=normalizedPieces; changed=true; }
   });
   return changed;
 }
@@ -2329,7 +2346,13 @@ function concertSourcePieces() {
   if (!unique.size) Object.keys(state.pieces||{}).forEach(title=>unique.set(title,{title,composer:'',category:'레퍼토리',icon:'🎼'}));
   return [...unique.values()];
 }
-function concertDuration(plan) { return plan.pieces.reduce((total,title)=>total+(state.pieces?.[title]?.duration||0),0); }
+function concertMusicDuration(plan) {
+  return plan.pieces.reduce((total,item)=>total+(state.pieces?.[item.title]?.duration||0),0);
+}
+function concertCommentDuration(plan) {
+  return plan.pieces.reduce((total,item)=>total+(item.commentDuration||0),0);
+}
+function concertDuration(plan) { return concertMusicDuration(plan)+concertCommentDuration(plan); }
 function formatConcertDate(value) {
   if (!value) return '';
   const date=new Date(`${value}T00:00:00`);
@@ -2354,8 +2377,24 @@ function addConcertPiece(id) {
   const select=document.getElementById(`concertPiecePick_${id}`);
   const title=select?.value;
   if (!plan || !title) { showToast('레퍼토리에서 곡을 선택해주세요'); return; }
-  if (plan.pieces.includes(title)) { showToast('이미 프로그램에 있는 곡입니다'); return; }
-  plan.pieces.push(title); saveAll(); renderConcertPlans();
+  if (plan.pieces.some(item=>item.title===title)) { showToast('이미 프로그램에 있는 곡입니다'); return; }
+  plan.pieces.push({title,comment:'',commentDuration:null}); saveAll(); renderConcertPlans();
+}
+function updateConcertPieceComment(id,index,value) {
+  const plan=getConcertPlan(id), item=plan?.pieces[index];
+  if (!item) return;
+  item.comment=value; saveAll();
+}
+function updateConcertPieceCommentDuration(id,index,value) {
+  const plan=getConcertPlan(id), item=plan?.pieces[index];
+  if (!item) return;
+  item.commentDuration=parseDurationInput(value); saveAll(); renderConcertPlans();
+}
+function openConcertPieceEditor(id,index) {
+  const item=getConcertPlan(id)?.pieces[index];
+  const meta=item ? getPieceMeta(item.title) : null;
+  if (!item || !meta) { showToast('레퍼토리에서 원곡을 찾을 수 없습니다'); return; }
+  openModal(item.title,meta.catName,meta.catId);
 }
 function moveConcertPiece(id,index,direction) {
   const plan=getConcertPlan(id), target=index+direction;
@@ -2380,16 +2419,17 @@ function renderConcertPlans() {
   const sourcePieces=concertSourcePieces();
   const plans=state.concertPlans||[];
   const planHtml=plans.map(plan=>{
-    const picked=new Set(plan.pieces);
+    const picked=new Set(plan.pieces.map(item=>item.title));
     const options=sourcePieces.map(piece=>`<option value="${practiceEscape(piece.title)}"${picked.has(piece.title)?' disabled':''}>${practiceEscape(piece.icon)} ${practiceEscape(piece.title)}${piece.composer?` — ${practiceEscape(piece.composer)}`:''}${picked.has(piece.title)?' (선택됨)':''}</option>`).join('');
-    const rows=plan.pieces.map((title,index)=>{
-      const data=state.pieces?.[title]||{}, meta=getPieceMeta(title);
-      return `<div class="concert-piece-row"><span class="concert-piece-index">${index+1}.</span><span class="concert-piece-name">${practiceEscape(title)}${meta?.composer?` <span style="color:var(--muted);font-size:12px">— ${practiceEscape(meta.composer)}</span>`:''}</span><span class="concert-piece-meta">${data.duration!=null?formatDuration(data.duration):'시간 미입력'}</span><div class="concert-piece-actions"><button class="concert-icon-btn" type="button" onclick="moveConcertPiece('${plan.id}',${index},-1)" ${index===0?'disabled':''} aria-label="위로 이동">↑</button><button class="concert-icon-btn" type="button" onclick="moveConcertPiece('${plan.id}',${index},1)" ${index===plan.pieces.length-1?'disabled':''} aria-label="아래로 이동">↓</button><button class="concert-icon-btn" type="button" onclick="removeConcertPiece('${plan.id}',${index})" aria-label="곡 빼기">×</button></div></div>`;
+    const rows=plan.pieces.map((item,index)=>{
+      const data=state.pieces?.[item.title]||{}, meta=getPieceMeta(item.title);
+      const commentDuration=item.commentDuration!=null ? formatDuration(item.commentDuration) : '';
+      return `<div class="concert-piece-row"><span class="concert-piece-index">${index+1}.</span><span class="concert-piece-name"><button class="concert-piece-edit" type="button" onclick="openConcertPieceEditor('${plan.id}',${index})" title="레퍼토리에서 곡 편집">${practiceEscape(item.title)}</button>${meta?.composer?` <span style="color:var(--muted);font-size:12px">— ${practiceEscape(meta.composer)}</span>`:''} <span style="color:var(--muted);font-size:11px">레퍼토리 편집</span></span><span class="concert-piece-meta">${data.duration!=null?formatDuration(data.duration):'곡 시간 미입력'}</span><div class="concert-piece-actions"><button class="concert-icon-btn" type="button" onclick="moveConcertPiece('${plan.id}',${index},-1)" ${index===0?'disabled':''} aria-label="위로 이동">↑</button><button class="concert-icon-btn" type="button" onclick="moveConcertPiece('${plan.id}',${index},1)" ${index===plan.pieces.length-1?'disabled':''} aria-label="아래로 이동">↓</button><button class="concert-icon-btn" type="button" onclick="removeConcertPiece('${plan.id}',${index})" aria-label="곡 빼기">×</button></div><div class="concert-piece-ment"><div><label>곡 전 멘트</label><textarea class="form-input" onchange="updateConcertPieceComment('${plan.id}',${index},this.value)" placeholder="이 곡 전에 할 멘트를 적어주세요.">${practiceEscape(item.comment||'')}</textarea></div><div><label>멘트 시간</label><input class="form-input" type="text" value="${practiceEscape(commentDuration)}" onchange="updateConcertPieceCommentDuration('${plan.id}',${index},this.value)" placeholder="예: 0:30" inputmode="numeric"></div></div></div>`;
     }).join('');
-    const total=concertDuration(plan);
-    return `<section class="concert-plan"><div class="concert-plan-head"><div class="concert-plan-title"><input type="text" value="${practiceEscape(plan.title)}" aria-label="연주회 이름" onchange="updateConcertPlan('${plan.id}','title',this.value)" placeholder="연주회 이름"></div><div class="concert-plan-summary" id="concertSummary_${plan.id}">${practiceEscape(concertTimeSummary(plan))}</div></div><div class="concert-plan-grid"><div class="form-row"><label class="form-label">연주 날짜</label><input class="form-input" type="date" value="${practiceEscape(plan.date)}" onchange="updateConcertPlan('${plan.id}','date',this.value)"></div><div class="form-row"><label class="form-label">연주 시간</label><input class="form-input" type="time" value="${practiceEscape(plan.time)}" onchange="updateConcertPlan('${plan.id}','time',this.value)"></div><div class="form-row"><label class="form-label">연주 장소</label><input class="form-input" type="text" value="${practiceEscape(plan.venue)}" onchange="updateConcertPlan('${plan.id}','venue',this.value)" placeholder="예: 성당 대성전"></div></div><div class="concert-piece-panel"><div class="concert-piece-head"><strong>연주 프로그램</strong><span class="concert-total">${plan.pieces.length}곡 · 총 ${total?formatDuration(total):'시간 미입력'}</span></div><div class="concert-picker"><select class="form-select" id="concertPiecePick_${plan.id}" aria-label="레퍼토리 곡 선택"><option value="">레퍼토리에서 곡 선택</option>${options}</select><button class="btn-primary concert-create-btn" type="button" onclick="addConcertPiece('${plan.id}')">＋ 프로그램에 추가</button></div><div class="concert-piece-list">${rows||'<div class="concert-empty">위 목록에서 레퍼토리 곡을 골라 연주 순서대로 추가하세요.</div>'}</div></div><div class="concert-note form-row"><label class="form-label">연주 멘트</label><textarea class="form-input" onchange="updateConcertPlan('${plan.id}','comment',this.value)" placeholder="관객에게 전할 곡 소개나 인사말을 적어주세요.">${practiceEscape(plan.comment)}</textarea></div><button class="btn-ghost concert-delete" type="button" onclick="confirmDeleteConcertPlan('${plan.id}')">이 연주회 준비 삭제</button></section>`;
+    const musicDuration=concertMusicDuration(plan), commentDuration=concertCommentDuration(plan), total=concertDuration(plan);
+    return `<section class="concert-plan"><div class="concert-plan-head"><div class="concert-plan-title"><input type="text" value="${practiceEscape(plan.title)}" aria-label="연주회 이름" onchange="updateConcertPlan('${plan.id}','title',this.value)" placeholder="연주회 이름"></div><div class="concert-plan-summary" id="concertSummary_${plan.id}">${practiceEscape(concertTimeSummary(plan))}</div></div><div class="concert-plan-grid"><div class="form-row"><label class="form-label">연주 날짜</label><input class="form-input" type="date" value="${practiceEscape(plan.date)}" onchange="updateConcertPlan('${plan.id}','date',this.value)"></div><div class="form-row"><label class="form-label">연주 시간</label><input class="form-input" type="time" value="${practiceEscape(plan.time)}" onchange="updateConcertPlan('${plan.id}','time',this.value)"></div><div class="form-row"><label class="form-label">연주 장소</label><input class="form-input" type="text" value="${practiceEscape(plan.venue)}" onchange="updateConcertPlan('${plan.id}','venue',this.value)" placeholder="예: 성당 대성전"></div></div><div class="concert-piece-panel"><div class="concert-piece-head"><strong>연주 프로그램</strong><span class="concert-total">${plan.pieces.length}곡 · 음악 ${formatDuration(musicDuration)} + 멘트 ${formatDuration(commentDuration)} = 총 ${formatDuration(total)}</span></div><div class="concert-picker"><select class="form-select" id="concertPiecePick_${plan.id}" aria-label="레퍼토리 곡 선택"><option value="">레퍼토리에서 곡 선택</option>${options}</select><button class="btn-primary concert-create-btn" type="button" onclick="addConcertPiece('${plan.id}')">＋ 프로그램에 추가</button></div><div class="concert-piece-list">${rows||'<div class="concert-empty">위 목록에서 레퍼토리 곡을 골라 연주 순서대로 추가하세요.</div>'}</div></div><div class="concert-note form-row"><label class="form-label">연주회 전체 멘트</label><textarea class="form-input" onchange="updateConcertPlan('${plan.id}','comment',this.value)" placeholder="개회·마무리 등 전체 진행 멘트를 적어주세요.">${practiceEscape(plan.comment)}</textarea></div><button class="btn-ghost concert-delete" type="button" onclick="confirmDeleteConcertPlan('${plan.id}')">이 연주회 준비 삭제</button></section>`;
   }).join('');
-  container.innerHTML=`<div class="concert-topline"><div><h2>연주회 준비</h2><p>레퍼토리에서 곡을 골라 순서를 정하고, 연주 날짜·시간·장소와 멘트를 한곳에 기록하세요.</p></div><button class="btn-primary concert-create-btn" type="button" onclick="createConcertPlan()">＋ 새 연주회 준비</button></div>${planHtml||'<div class="empty-state">준비 중인 연주회가 없습니다.<br>새 연주회 준비를 만들어 프로그램을 구성해보세요.</div>'}`;
+  container.innerHTML=`<div class="concert-topline"><div><h2>연주회 준비</h2><p>레퍼토리 곡을 편집하고, 곡 전 멘트와 멘트 시간까지 더해 실제 진행 시간을 구성하세요.</p></div><button class="btn-primary concert-create-btn" type="button" onclick="createConcertPlan()">＋ 새 연주회 준비</button></div>${planHtml||'<div class="empty-state">준비 중인 연주회가 없습니다.<br>새 연주회 준비를 만들어 프로그램을 구성해보세요.</div>'}`;
 }
 
 function renderTimeline() {
@@ -2540,8 +2580,10 @@ function saveModal() {
   d.duration=parseDurationInput(document.getElementById('durationInput').value);
   if(newTitle!==editingPiece){
     if(categories.some(c=>c.pieces.some(p=>p.title===newTitle&&p.title!==editingPiece))){showToast('같은 이름의 곡이 이미 있습니다');return;}
-    state.pieces[newTitle]=state.pieces[editingPiece];delete state.pieces[editingPiece];
-    categories.forEach(c=>{const p=c.pieces.find(p=>p.title===editingPiece);if(p)p.title=newTitle;});
+    const previousTitle=editingPiece;
+    state.pieces[newTitle]=state.pieces[previousTitle];delete state.pieces[previousTitle];
+    categories.forEach(c=>{const p=c.pieces.find(p=>p.title===previousTitle);if(p)p.title=newTitle;});
+    (state.concertPlans||[]).forEach(plan=>plan.pieces.forEach(item=>{if(item.title===previousTitle)item.title=newTitle;}));
     editingPiece=newTitle;
   }
   categories.forEach(c=>{const p=c.pieces.find(p=>p.title===editingPiece);if(p)p.composer=newComposer;});
@@ -2734,7 +2776,7 @@ function removeFromSetlist(catId,title){
   saveAll(); render();
   showToast('목록에서 뺐습니다');
 }
-function deletePiece(title){categories.forEach(c=>{c.pieces=c.pieces.filter(p=>p.title!==title);});delete state.pieces[title];(state.concertPlans||[]).forEach(plan=>{plan.pieces=plan.pieces.filter(pieceTitle=>pieceTitle!==title);});saveAll();render();showToast('삭제되었습니다');}
+function deletePiece(title){categories.forEach(c=>{c.pieces=c.pieces.filter(p=>p.title!==title);});delete state.pieces[title];(state.concertPlans||[]).forEach(plan=>{plan.pieces=plan.pieces.filter(item=>item.title!==title);});saveAll();render();showToast('삭제되었습니다');}
 function confirmDeleteCat(catId){
   const cat=getCatById(catId);if(!cat)return;
   const msg = cat.isSetlist
