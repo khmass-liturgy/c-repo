@@ -1147,7 +1147,7 @@ h1 em { font-style:italic; color:var(--gold); }
             <div class="metronome-head">
               <div>
                 <div class="metronome-title">🎸 기타 튜너</div>
-                <div class="metronome-sub">기준음 A4 = 442 Hz · 마이크로 음정을 확인합니다</div>
+                <div class="metronome-sub">기준음 A4 = 440 Hz · 마이크로 음정을 확인합니다</div>
               </div>
               <span class="metronome-running">● LISTENING</span>
             </div>
@@ -2149,7 +2149,7 @@ function detectPitch(buffer,sampleRate) {
   const refined=denominator ? candidate+.5*(left-right)/denominator : candidate;
   return sampleRate/refined;
 }
-const TUNER_REFERENCE_HZ=442;
+const TUNER_REFERENCE_HZ=440;
 function updateTunerReading(frequency) {
   const noteEl=document.getElementById('tunerNote'), frequencyEl=document.getElementById('tunerFrequency');
   const needle=document.getElementById('tunerNeedle'), status=document.getElementById('tunerStatus');

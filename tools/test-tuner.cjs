@@ -55,22 +55,22 @@ const strings = ['E2','A2','D3','G3','B3','E4'].map(note => Object.assign(elemen
 const document = {getElementById:id=>elements[id], querySelectorAll:()=>strings};
 const readingSource = html.match(/const TUNER_REFERENCE_HZ=\d+;[\s\S]*?(?=function analyseTunerFrame)/)[0];
 const update = new Function('document', `${readingSource}; return updateTunerReading;`)(document);
-update(442);
+update(440);
 assert.equal(elements.tunerNote.textContent, 'A4');
 assert.equal(elements.tunerNeedle.style.left, '50%');
 assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
 for (const cents of [-6, 6]) {
-  update(442 * 2 ** (cents / 1200));
+  update(440 * 2 ** (cents / 1200));
   assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
 }
-update(440);
+update(442);
 assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
 for (const [index, midi] of [40,45,50,55,59,64].entries()) {
-  update(442 * 2 ** ((midi - 69) / 12));
+  update(440 * 2 ** ((midi - 69) / 12));
   assert.equal(elements.tunerNote.textContent, strings[index].dataset.note);
   assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
   assert.ok(strings[index].classList.contains('active'));
 }
 update(-1);
 assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
-console.log('TUNER_442_COLOR_STATE_OK');
+console.log('TUNER_440_COLOR_STATE_OK');
