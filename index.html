@@ -1763,7 +1763,7 @@ let practiceTimerRunning=false;
 let metronomeBpm=Math.min(240,Math.max(30,parseInt(localStorage.getItem('guitar_metronome_bpm')||'60',10)||60));
 let metronomeBeats=Math.min(6,Math.max(2,parseInt(localStorage.getItem('guitar_metronome_beats')||'4',10)||4));
 let metronomeRunning=false, metronomeTimerId=null, metronomeBeatIndex=0, metronomeAudioContext=null;
-let tunerRunning=false, tunerStream=null, tunerAudioContext=null, tunerAnalyser=null, tunerFrameId=null, tunerLastSampleAt=0;
+let tunerRunning=false, tunerStream=null, tunerAudioContext=null, tunerAnalyser=null, tunerInputGain=null, tunerFrameId=null, tunerLastSampleAt=0;
 let performanceTimerRunning=false, performanceTimerElapsedMs=0, performanceTimerStartedAt=0, performanceTimerId=null;
 
 function loadAll() {
@@ -2105,22 +2105,48 @@ async function toggleMetronome() {
   restartMetronome();
 }
 function detectPitch(buffer,sampleRate) {
+  let mean=0;
+  for(let i=0;i<buffer.length;i++) mean+=buffer[i];
+  mean/=buffer.length;
   let rms=0;
-  for(let i=0;i<buffer.length;i++) rms+=buffer[i]*buffer[i];
+  for(let i=0;i<buffer.length;i++){const sample=buffer[i]-mean;rms+=sample*sample;}
   rms=Math.sqrt(rms/buffer.length);
-  if(rms<.012) return -1;
-  const minOffset=Math.floor(sampleRate/1200), maxOffset=Math.min(Math.floor(sampleRate/65),buffer.length-2);
-  let bestOffset=-1, bestCorrelation=0, previousCorrelation=1, found=false;
-  for(let offset=minOffset;offset<=maxOffset;offset++) {
-    let difference=0;
-    const samples=buffer.length-offset;
-    for(let i=0;i<samples;i++) difference+=Math.abs(buffer[i]-buffer[i+offset]);
-    const correlation=1-difference/samples;
-    if(correlation>.9&&correlation>previousCorrelation) { found=true; if(correlation>bestCorrelation){bestCorrelation=correlation;bestOffset=offset;} }
-    else if(found) break;
-    previousCorrelation=correlation;
+  if(rms<.001) return -1;
+  const minLag=Math.max(2,Math.floor(sampleRate/1200));
+  const maxLag=Math.min(Math.floor(sampleRate/65),Math.floor(buffer.length/2));
+  const sampleCount=buffer.length-maxLag;
+  const difference=new Float32Array(maxLag+1);
+  const normalized=new Float32Array(maxLag+1);
+  for(let lag=1;lag<=maxLag;lag++) {
+    let sum=0;
+    for(let i=0;i<sampleCount;i++) {
+      const delta=(buffer[i]-mean)-(buffer[i+lag]-mean);
+      sum+=delta*delta;
+    }
+    difference[lag]=sum;
   }
-  return bestOffset>0&&bestCorrelation>.9 ? sampleRate/bestOffset : -1;
+  normalized[0]=1;
+  let runningSum=0;
+  for(let lag=1;lag<=maxLag;lag++) {
+    runningSum+=difference[lag];
+    normalized[lag]=runningSum ? difference[lag]*lag/runningSum : 1;
+  }
+  let candidate=-1, bestLag=-1, bestValue=1;
+  for(let lag=minLag;lag<=maxLag;lag++) {
+    if(normalized[lag]<bestValue){bestValue=normalized[lag];bestLag=lag;}
+    if(normalized[lag]<.2) {
+      while(lag+1<=maxLag&&normalized[lag+1]<normalized[lag]) lag++;
+      candidate=lag; break;
+    }
+  }
+  if(candidate<0&&bestValue<.32) candidate=bestLag;
+  if(candidate<1) return -1;
+  const left=normalized[candidate-1]??normalized[candidate];
+  const center=normalized[candidate];
+  const right=normalized[candidate+1]??center;
+  const denominator=left-2*center+right;
+  const refined=denominator ? candidate+.5*(left-right)/denominator : candidate;
+  return sampleRate/refined;
 }
 function updateTunerReading(frequency) {
   const noteEl=document.getElementById('tunerNote'), frequencyEl=document.getElementById('tunerFrequency');
@@ -2147,7 +2173,7 @@ function updateTunerReading(frequency) {
 }
 function analyseTunerFrame(timestamp) {
   if(!tunerRunning||!tunerAnalyser||!tunerAudioContext) return;
-  if(timestamp-tunerLastSampleAt>75) {
+  if(timestamp-tunerLastSampleAt>90) {
     const buffer=new Float32Array(tunerAnalyser.fftSize);
     tunerAnalyser.getFloatTimeDomainData(buffer);
     updateTunerReading(detectPitch(buffer,tunerAudioContext.sampleRate));
@@ -2162,7 +2188,7 @@ function stopGuitarTuner() {
   if(tunerStream) tunerStream.getTracks().forEach(track=>track.stop());
   tunerStream=null;
   if(tunerAudioContext) tunerAudioContext.close().catch(()=>{});
-  tunerAudioContext=null; tunerAnalyser=null;
+  tunerAudioContext=null; tunerAnalyser=null; tunerInputGain=null;
   const shell=document.getElementById('guitarTuner'), button=document.getElementById('tunerToggleBtn');
   if(shell) shell.classList.remove('running');
   if(button){button.textContent='🎙 튜너 시작';button.classList.remove('active');}
@@ -2175,10 +2201,11 @@ async function toggleGuitarTuner() {
   if(!AudioContextClass||!navigator.mediaDevices?.getUserMedia){showToast('이 브라우저는 마이크 튜너를 지원하지 않습니다');return;}
   const status=document.getElementById('tunerStatus'); if(status) status.textContent='마이크 권한을 확인하는 중입니다…';
   try {
-    tunerStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    tunerStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:true,channelCount:1}});
     tunerAudioContext=new AudioContextClass();
-    tunerAnalyser=tunerAudioContext.createAnalyser(); tunerAnalyser.fftSize=2048;
-    tunerAudioContext.createMediaStreamSource(tunerStream).connect(tunerAnalyser);
+    tunerAnalyser=tunerAudioContext.createAnalyser(); tunerAnalyser.fftSize=4096; tunerAnalyser.smoothingTimeConstant=0;
+    tunerInputGain=tunerAudioContext.createGain(); tunerInputGain.gain.value=4;
+    tunerAudioContext.createMediaStreamSource(tunerStream).connect(tunerInputGain).connect(tunerAnalyser);
     tunerRunning=true; tunerLastSampleAt=0;
     document.getElementById('guitarTuner')?.classList.add('running');
     const button=document.getElementById('tunerToggleBtn'); if(button){button.textContent='■ 튜너 정지';button.classList.add('active');}
