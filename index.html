@@ -956,7 +956,8 @@ h1 em { font-style:italic; color:var(--gold); }
   .tuner-frequency { color:var(--muted); font-size:10px; text-align:center; margin-top:5px; font-variant-numeric:tabular-nums; }
   .tuner-meter { position:relative; height:34px; border-radius:18px; overflow:hidden; background:linear-gradient(90deg,rgba(181,98,26,.28),rgba(215,181,109,.12) 40%,rgba(46,125,79,.3) 50%,rgba(215,181,109,.12) 60%,rgba(181,98,26,.28)); border:1px solid #343b40; }
   .tuner-meter::before { content:''; position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--green); transform:translateX(-50%); }
-  .tuner-needle { position:absolute; left:50%; top:5px; width:3px; height:22px; border-radius:3px; background:var(--gold2); box-shadow:0 0 8px rgba(240,210,141,.65); transform:translateX(-50%); transition:left .1s linear; }
+  .tuner-needle { position:absolute; left:50%; top:5px; width:3px; height:22px; border-radius:3px; background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,.65); transform:translateX(-50%); transition:left .1s linear; }
+  .tuner-needle.in-tune { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,.65); }
   .tuner-scale { display:flex; justify-content:space-between; color:var(--muted); font-size:9px; margin-top:4px; }
   .tuner-status { min-height:18px; margin-top:11px; color:#ded1aa; font-size:11px; text-align:center; }
   .tuner-strings { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin-top:12px; }
@@ -1146,7 +1147,7 @@ h1 em { font-style:italic; color:var(--gold); }
             <div class="metronome-head">
               <div>
                 <div class="metronome-title">🎸 기타 튜너</div>
-                <div class="metronome-sub">마이크로 기타 음정을 실시간 확인합니다</div>
+                <div class="metronome-sub">기준음 A4 = 442 Hz · 마이크로 음정을 확인합니다</div>
               </div>
               <span class="metronome-running">● LISTENING</span>
             </div>
@@ -2148,25 +2149,28 @@ function detectPitch(buffer,sampleRate) {
   const refined=denominator ? candidate+.5*(left-right)/denominator : candidate;
   return sampleRate/refined;
 }
+const TUNER_REFERENCE_HZ=442;
 function updateTunerReading(frequency) {
   const noteEl=document.getElementById('tunerNote'), frequencyEl=document.getElementById('tunerFrequency');
   const needle=document.getElementById('tunerNeedle'), status=document.getElementById('tunerStatus');
   if(!noteEl||!frequencyEl||!needle||!status) return;
-  if(frequency<0) {
+  if(!Number.isFinite(frequency)||frequency<=0) {
+    needle.classList.remove('in-tune');
     noteEl.textContent='—'; frequencyEl.textContent='음을 듣는 중'; needle.style.left='50%';
     status.textContent='한 줄만 또렷하게 튕겨주세요';
     document.querySelectorAll('.tuner-string').forEach(el=>el.classList.remove('active'));
     return;
   }
-  const midi=Math.round(69+12*Math.log2(frequency/440));
+  const midi=Math.round(69+12*Math.log2(frequency/TUNER_REFERENCE_HZ));
   const names=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
   const noteName=`${names[(midi%12+12)%12]}${Math.floor(midi/12)-1}`;
-  const reference=440*Math.pow(2,(midi-69)/12);
+  const reference=TUNER_REFERENCE_HZ*Math.pow(2,(midi-69)/12);
   const cents=Math.max(-50,Math.min(50,1200*Math.log2(frequency/reference)));
   noteEl.textContent=noteName; frequencyEl.textContent=`${frequency.toFixed(1)} Hz · ${cents>=0?'+':''}${Math.round(cents)} cent`;
   needle.style.left=`${cents+50}%`;
+  needle.classList.toggle('in-tune',Math.abs(cents)<=5);
   status.textContent=Math.abs(cents)<=5?'음정이 정확합니다':cents<0?'조금 낮습니다 — 줄을 조여주세요':'조금 높습니다 — 줄을 풀어주세요';
-  const openStrings=[['E2',82.41],['A2',110],['D3',146.83],['G3',196],['B3',246.94],['E4',329.63]];
+  const openStrings=[['E2',40],['A2',45],['D3',50],['G3',55],['B3',59],['E4',64]].map(([name,midi])=>[name,TUNER_REFERENCE_HZ*Math.pow(2,(midi-69)/12)]);
   let nearest=null, distance=Infinity;
   openStrings.forEach(item=>{const gap=Math.abs(1200*Math.log2(frequency/item[1]));if(gap<distance){distance=gap;nearest=item[0];}});
   document.querySelectorAll('.tuner-string').forEach(el=>el.classList.toggle('active',distance<100&&el.dataset.note===nearest));

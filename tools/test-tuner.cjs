@@ -1,11 +1,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const match = html.match(/function detectPitch\(buffer,sampleRate\) \{[\s\S]*?\n\}\nfunction updateTunerReading/);
+const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+const match = html.match(/function detectPitch\(buffer,sampleRate\) \{[\s\S]*?\n\}/);
 if (!match) throw new Error('detectPitch function not found');
 
-const source = match[0].replace(/\nfunction updateTunerReading$/, '');
+const source = match[0];
 const detectPitch = new Function(`${source}; return detectPitch;`)();
 
 function sine(frequency, amplitude = 0.4, sampleRate = 48000, size = 4096) {
@@ -40,3 +40,37 @@ if (detectPitch(quietNoise, 48000) !== -1) {
 }
 
 console.log('TUNER_PITCH_TEST_OK');
+
+const assert = require('node:assert/strict');
+function element() {
+  const classes = new Set();
+  return {textContent:'', style:{}, classList:{
+    remove: name => classes.delete(name),
+    toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name),
+    contains: name => classes.has(name)
+  }};
+}
+const elements = Object.fromEntries(['tunerNote','tunerFrequency','tunerNeedle','tunerStatus'].map(id => [id, element()]));
+const strings = ['E2','A2','D3','G3','B3','E4'].map(note => Object.assign(element(), {dataset:{note}}));
+const document = {getElementById:id=>elements[id], querySelectorAll:()=>strings};
+const readingSource = html.match(/const TUNER_REFERENCE_HZ=\d+;[\s\S]*?(?=function analyseTunerFrame)/)[0];
+const update = new Function('document', `${readingSource}; return updateTunerReading;`)(document);
+update(442);
+assert.equal(elements.tunerNote.textContent, 'A4');
+assert.equal(elements.tunerNeedle.style.left, '50%');
+assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
+for (const cents of [-6, 6]) {
+  update(442 * 2 ** (cents / 1200));
+  assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
+}
+update(440);
+assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
+for (const [index, midi] of [40,45,50,55,59,64].entries()) {
+  update(442 * 2 ** ((midi - 69) / 12));
+  assert.equal(elements.tunerNote.textContent, strings[index].dataset.note);
+  assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
+  assert.ok(strings[index].classList.contains('active'));
+}
+update(-1);
+assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
+console.log('TUNER_442_COLOR_STATE_OK');
