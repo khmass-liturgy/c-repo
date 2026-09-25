@@ -951,6 +951,9 @@ h1 em { font-style:italic; color:var(--gold); }
   .metro-dot.active { background:var(--gold2); transform:scale(1.35); box-shadow:0 0 10px rgba(240,210,141,.7); }
   .tuner, .performance-stopwatch { border-top:1px solid var(--border); padding:18px; background:#0c1013; }
   .tuner.running .metronome-running { opacity:1; }
+  .tuner-reference { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; color:var(--cream); font-size:12px; }
+  .tuner-reference select { padding:6px 8px; }
+  .tuner-reference-hint { color:var(--muted); font-size:10px; line-height:1.5; margin-top:6px; }
   .tuner-display { display:grid; grid-template-columns:86px 1fr; align-items:center; gap:14px; margin-top:16px; }
   .tuner-note { color:var(--gold2); font-family:'Noto Serif KR',serif; font-size:38px; line-height:1; text-align:center; }
   .tuner-frequency { color:var(--muted); font-size:10px; text-align:center; margin-top:5px; font-variant-numeric:tabular-nums; }
@@ -1147,10 +1150,17 @@ h1 em { font-style:italic; color:var(--gold); }
             <div class="metronome-head">
               <div>
                 <div class="metronome-title">🎸 기타 튜너</div>
-                <div class="metronome-sub">기준음 A4 = 440 Hz · 마이크로 음정을 확인합니다</div>
+                <div class="metronome-sub">마이크로 음정을 확인합니다</div>
               </div>
               <span class="metronome-running">● LISTENING</span>
             </div>
+            <div class="tuner-reference">
+              <label for="tunerReference">기준음 (A4)</label>
+              <select class="metro-beats" id="tunerReference" onchange="setTunerReference(this.value)">
+                <option value="440">440 Hz</option><option value="442" selected>442 Hz</option>
+              </select>
+            </div>
+            <div class="tuner-reference-hint">실제 조율기의 A4 설정과 같게 맞추세요. 선택은 이 기기에 저장됩니다.</div>
             <div class="tuner-display">
               <div><div class="tuner-note" id="tunerNote">—</div><div class="tuner-frequency" id="tunerFrequency">마이크 대기</div></div>
               <div>
@@ -1158,6 +1168,7 @@ h1 em { font-style:italic; color:var(--gold); }
                 <div class="tuner-scale"><span>♭ 낮음</span><span>정확</span><span>♯ 높음</span></div>
               </div>
             </div>
+            <div class="tuner-frequency" id="tunerTarget">A4 기준 442 Hz</div>
             <div class="tuner-status" id="tunerStatus">조용한 곳에서 한 줄씩 튕겨주세요</div>
             <div class="tuner-strings" id="tunerStrings" aria-label="기타 개방현 기준음">
               <span class="tuner-string" data-note="E2"><strong>E2</strong>6번줄</span><span class="tuner-string" data-note="A2"><strong>A2</strong>5번줄</span><span class="tuner-string" data-note="D3"><strong>D3</strong>4번줄</span><span class="tuner-string" data-note="G3"><strong>G3</strong>3번줄</span><span class="tuner-string" data-note="B3"><strong>B3</strong>2번줄</span><span class="tuner-string" data-note="E4"><strong>E4</strong>1번줄</span>
@@ -2149,8 +2160,28 @@ function detectPitch(buffer,sampleRate) {
   const refined=denominator ? candidate+.5*(left-right)/denominator : candidate;
   return sampleRate/refined;
 }
-const TUNER_REFERENCE_HZ=440;
+let tunerReferenceHz=442;
+let tunerLastFrequency=-1;
+function restoreTunerReference() {
+  try {
+    const saved=Number(localStorage.getItem('guitar_tuner_reference_hz'));
+    if(saved===440||saved===442) tunerReferenceHz=saved;
+  } catch(e) {}
+  document.getElementById('tunerReference').value=String(tunerReferenceHz);
+  updateTunerReading(-1);
+}
+function setTunerReference(value) {
+  const hz=Number(value);
+  if(hz!==440&&hz!==442) return;
+  tunerReferenceHz=hz;
+  try { localStorage.setItem('guitar_tuner_reference_hz',String(hz)); } catch(e) {}
+  document.getElementById('tunerReference').value=String(hz);
+  updateTunerReading(tunerLastFrequency);
+}
 function updateTunerReading(frequency) {
+  tunerLastFrequency=frequency;
+  const target=document.getElementById('tunerTarget');
+  if(target) target.textContent=`A4 기준 ${tunerReferenceHz} Hz`;
   const noteEl=document.getElementById('tunerNote'), frequencyEl=document.getElementById('tunerFrequency');
   const needle=document.getElementById('tunerNeedle'), status=document.getElementById('tunerStatus');
   if(!noteEl||!frequencyEl||!needle||!status) return;
@@ -2161,16 +2192,17 @@ function updateTunerReading(frequency) {
     document.querySelectorAll('.tuner-string').forEach(el=>el.classList.remove('active'));
     return;
   }
-  const midi=Math.round(69+12*Math.log2(frequency/TUNER_REFERENCE_HZ));
+  const midi=Math.round(69+12*Math.log2(frequency/tunerReferenceHz));
   const names=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
   const noteName=`${names[(midi%12+12)%12]}${Math.floor(midi/12)-1}`;
-  const reference=TUNER_REFERENCE_HZ*Math.pow(2,(midi-69)/12);
+  const reference=tunerReferenceHz*Math.pow(2,(midi-69)/12);
+  if(target) target.textContent=`${noteName} 목표 ${reference.toFixed(2)} Hz · A4 ${tunerReferenceHz} Hz`;
   const cents=Math.max(-50,Math.min(50,1200*Math.log2(frequency/reference)));
-  noteEl.textContent=noteName; frequencyEl.textContent=`${frequency.toFixed(1)} Hz · ${cents>=0?'+':''}${Math.round(cents)} cent`;
+  noteEl.textContent=noteName; frequencyEl.textContent=`${frequency.toFixed(2)} Hz · ${cents>=0?'+':''}${cents.toFixed(1)} cent`;
   needle.style.left=`${cents+50}%`;
   needle.classList.toggle('in-tune',Math.abs(cents)<=5);
   status.textContent=Math.abs(cents)<=5?'음정이 정확합니다':cents<0?'조금 낮습니다 — 줄을 조여주세요':'조금 높습니다 — 줄을 풀어주세요';
-  const openStrings=[['E2',40],['A2',45],['D3',50],['G3',55],['B3',59],['E4',64]].map(([name,midi])=>[name,TUNER_REFERENCE_HZ*Math.pow(2,(midi-69)/12)]);
+  const openStrings=[['E2',40],['A2',45],['D3',50],['G3',55],['B3',59],['E4',64]].map(([name,midi])=>[name,tunerReferenceHz*Math.pow(2,(midi-69)/12)]);
   let nearest=null, distance=Infinity;
   openStrings.forEach(item=>{const gap=Math.abs(1200*Math.log2(frequency/item[1]));if(gap<distance){distance=gap;nearest=item[0];}});
   document.querySelectorAll('.tuner-string').forEach(el=>el.classList.toggle('active',distance<100&&el.dataset.note===nearest));
@@ -3572,6 +3604,7 @@ async function initializeSupabaseSync() {
 
 /* ══════════════ INIT ══════════════ */
 loadAll();
+restoreTunerReference();
 render();
 initializeSupabaseSync();
 </script>

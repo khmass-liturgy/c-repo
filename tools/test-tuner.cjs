@@ -50,27 +50,65 @@ function element() {
     contains: name => classes.has(name)
   }};
 }
-const elements = Object.fromEntries(['tunerNote','tunerFrequency','tunerNeedle','tunerStatus'].map(id => [id, element()]));
+const elements = Object.fromEntries(['tunerNote','tunerFrequency','tunerNeedle','tunerStatus','tunerReference','tunerTarget'].map(id => [id, element()]));
 const strings = ['E2','A2','D3','G3','B3','E4'].map(note => Object.assign(element(), {dataset:{note}}));
 const document = {getElementById:id=>elements[id], querySelectorAll:()=>strings};
-const readingSource = html.match(/const TUNER_REFERENCE_HZ=\d+;[\s\S]*?(?=function analyseTunerFrame)/)[0];
-const update = new Function('document', `${readingSource}; return updateTunerReading;`)(document);
-update(440);
+const saved = new Map();
+const localStorage = {getItem:key=>saved.get(key)??null,setItem:(key,value)=>saved.set(key,value)};
+const readingSource = html.match(/let tunerReferenceHz=\d+;[\s\S]*?(?=function analyseTunerFrame)/)[0];
+function createTuner() {
+  return new Function('document','localStorage', `${readingSource}; return {update:updateTunerReading,set:setTunerReference,restore:restoreTunerReference};`)(document,localStorage);
+}
+const tuner=createTuner();
+const update=tuner.update;
+tuner.restore();
+assert.equal(elements.tunerReference.value,'442');
+update(442);
 assert.equal(elements.tunerNote.textContent, 'A4');
 assert.equal(elements.tunerNeedle.style.left, '50%');
 assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
-for (const cents of [-6, 6]) {
-  update(440 * 2 ** (cents / 1200));
-  assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
-}
-update(442);
+// Reproduce the user's mismatch, then fix it without requiring a new sample.
+tuner.set(440);
+assert.ok(elements.tunerFrequency.textContent.includes('+7.9 cent'));
 assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
-for (const [index, midi] of [40,45,50,55,59,64].entries()) {
-  update(440 * 2 ** ((midi - 69) / 12));
-  assert.equal(elements.tunerNote.textContent, strings[index].dataset.note);
-  assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
-  assert.ok(strings[index].classList.contains('active'));
+tuner.set(442);
+assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
+for (const reference of [440,442]) {
+  tuner.set(reference);
+  for (const cents of [-6, 6]) {
+    update(reference * 2 ** (cents / 1200));
+    assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
+  }
+  for (const [index, midi] of [40,45,50,55,59,64].entries()) {
+    const expected=reference * 2 ** ((midi - 69) / 12);
+    update(expected);
+    assert.equal(elements.tunerNote.textContent, strings[index].dataset.note);
+    assert.ok(elements.tunerNeedle.classList.contains('in-tune'));
+    assert.ok(strings[index].classList.contains('active'));
+    assert.ok(elements.tunerTarget.textContent.includes(expected.toFixed(2)));
+  }
 }
+tuner.set(440);
+createTuner().restore();
+assert.equal(elements.tunerReference.value,'440');
+tuner.set(442);
+createTuner().restore();
+assert.equal(elements.tunerReference.value,'442');
+tuner.set(0);
+assert.equal(elements.tunerReference.value,'442');
 update(-1);
 assert.ok(!elements.tunerNeedle.classList.contains('in-tune'));
-console.log('TUNER_440_COLOR_STATE_OK');
+console.log('TUNER_CALIBRATION_COLOR_STORAGE_OK');
+
+// Sub-Hz errors can exceed several cents on low strings: assert musical accuracy.
+let worstError=0;
+for(const rate of [44100,48000,96000]) for(const reference of [440,442]) {
+  for(const midi of [40,45,50,55,59,64,69]) for(const offset of [-12,0,12]) {
+    const expected=reference * 2 ** ((midi-69)/12+offset/1200);
+    const measured=detectPitch(sine(expected,.01,rate),rate);
+    const cents=1200*Math.log2(measured/expected);
+    assert.ok(Number.isFinite(cents)&&Math.abs(cents)<.5, `Pitch error: ${cents} cents at ${expected} Hz / ${rate}`);
+    worstError=Math.max(worstError,Math.abs(cents));
+  }
+}
+console.log(`TUNER_PRECISION_OK max_error=${worstError.toFixed(3)}_cents`);
