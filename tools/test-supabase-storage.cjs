@@ -68,12 +68,16 @@ async function main() {
   assert.equal(otp.options.emailRedirectTo, 'https://khmass-liturgy.github.io/c-repo/');
   assert.equal(otp.options.shouldCreateUser, true);
 
-  const payload = { categories: [{ id: 'classical' }], state: { pieces: {}, collapsed: {} } };
+  const payload = { categories: [{ id: 'classical' }], state: { pieces: {}, collapsed: {}, concertPlans: [],
+    concertArchives: [{ id: 'concert-test', title: '완료된 연주회', completedAt: '2026-10-18T10:30:00Z',
+      pieces: [{ title: '기타곡', comment: '곡 소개', commentDuration: 30, savedPiece: { duration: 180, composer: '작곡가' } }] }] } };
   await api.save(payload);
   const upsert = calls.find(call => call[0] === 'upsert');
   assert.equal(upsert[1].user_id, user.id);
   assert.equal(JSON.stringify(upsert[1].payload), JSON.stringify(payload));
   assert.equal(upsert[2].onConflict, 'user_id');
+  remote.payload = JSON.parse(JSON.stringify(upsert[1].payload));
+  assert.equal(JSON.stringify((await api.load()).payload), JSON.stringify(payload));
 
   authCallback('SIGNED_OUT', null);
   assert.equal(api.user(), null);
