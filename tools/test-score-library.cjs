@@ -6,7 +6,8 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 for (const [, script] of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(script);
 function source(name) {
-  const start = html.indexOf(`function ${name}(`);
+  let start = html.indexOf(`async function ${name}(`);
+  if (start < 0) start = html.indexOf(`function ${name}(`);
   assert.ok(start >= 0, `Missing ${name}`);
   const body = html.slice(start);
   const firstLine = body.slice(0, body.indexOf('\n'));
@@ -28,7 +29,11 @@ const elements = {
   scoreLibraryCategoryName: categoryName,
   scoreLibraryCategoryModal: categoryModal,
   scoreLibraryCategoryModalTitle: { textContent: '' },
-  scoreLibraryUploadStatus: { textContent: '' }
+  scoreLibraryUploadStatus: { textContent: '' },
+  scoreFileOpenBtn: { style: {} },
+  scoreFileDeleteBtn: { style: {}, disabled: false },
+  scoreFileMeta: { textContent: '' },
+  pieceScoreLibrarySelect: { innerHTML: '', value: '', disabled: false, onchange: null }
 };
 let idCounter = 0;
 let loggedIn = { id: 'user-123' };
@@ -49,14 +54,16 @@ const context = vm.createContext({
   showToast: message => messages.push(message),
   render() {},
   openConfirm: (message, callback) => { confirmCallback = callback; },
-  state: { pieces: {}, concertPlans: [], concertArchives: [] },
+  state: { pieces: {}, concertPlans: [], concertArchives: [] }, editingPiece: null,
   categories: [], scoreLibrarySelectedCategoryId: 'all', editingScoreLibraryCategoryId: null
 });
 vm.runInContext([
   'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'newScoreObjectPath', 'saveAll', 'formatScoreFileSize',
   'renderScoreLibrary', 'openScoreLibraryCategoryModal', 'closeScoreLibraryCategoryModal',
   'saveScoreLibraryCategory', 'deleteScoreLibraryCategory', 'moveScoreLibraryFile',
-  'handleScoreLibraryUpload', 'deleteScoreLibraryFile'
+  'handleScoreLibraryUpload', 'deleteScoreLibraryFile', 'getPieceData', 'setScoreEditorState',
+  'populateScoreLibraryPicker', 'scorePathIsArchived', 'scorePathIsReferenced',
+  'attachLibraryScoreToPiece', 'removeEditingScore'
 ].map(source).join('\n'), context);
 const run = code => vm.runInContext(code, context);
 
@@ -131,6 +138,26 @@ async function main() {
   assert.equal(uploaded.length, 3, 'Valid files upload while unsupported and oversized files are skipped');
   assert.equal(run('state.scoreLibrary.files.length'), 2);
   assert.ok(messages.at(-1).includes('2개 파일 저장 완료, 2개 실패'));
+
+  run("state.pieces['테스트곡']={}; editingPiece='테스트곡'; populateScoreLibraryPicker(state.pieces['테스트곡'])");
+  const sharedFileId = run("state.scoreLibrary.files.find(file=>file.fileName==='바흐_무반주_1006.pdf').id");
+  assert.ok(elements.pieceScoreLibrarySelect.innerHTML.includes('바흐_무반주_1006.pdf'));
+  await run(`attachLibraryScoreToPiece('${sharedFileId}')`);
+  const sharedPath = run("state.pieces['테스트곡'].scoreStoragePath");
+  assert.equal(sharedPath, run(`state.scoreLibrary.files.find(file=>file.id==='${sharedFileId}').path`));
+  assert.equal(run("state.pieces['테스트곡'].scoreFileName"), '바흐_무반주_1006.pdf');
+  assert.equal(run("state.pieces['테스트곡'].scoreLibraryFileId"), sharedFileId);
+  assert.equal(deleted.length, 1, 'Attaching a library score does not copy or delete the file');
+
+  run(`deleteScoreLibraryFile('${sharedFileId}')`);
+  await confirmCallback();
+  assert.equal(run('state.scoreLibrary.files.length'), 1);
+  assert.equal(run("state.pieces['테스트곡'].scoreStoragePath"), sharedPath,
+    'Removing a library listing keeps a score still used by a repertoire piece');
+  assert.equal(deleted.length, 1);
+  await run('removeEditingScore()');
+  assert.equal(run("state.pieces['테스트곡'].scoreStoragePath"), undefined);
+  assert.equal(deleted.length, 1, 'Unlinking a library score never deletes the stored file');
   console.log('SCORE_LIBRARY_TEST_OK: category CRUD, upload, organization, authentication, and persistence');
 }
 

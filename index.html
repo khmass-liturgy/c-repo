@@ -293,6 +293,9 @@ h1 em { font-style:italic; color:var(--gold); }
   font-size:15px; color:var(--muted); margin-top:5px; line-height:1.5;
 }
 .score-file-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.score-library-import-row { display:grid; grid-template-columns:minmax(150px,auto) minmax(0,1fr); gap:7px 10px; align-items:center; margin-top:10px; }
+.score-library-import-row label { color:var(--cream); font-size:13px; }
+.score-library-import-row .score-hint { grid-column:1 / -1; margin-top:0; }
 .score-file-input { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
 .score-file-label, .score-file-open, .score-file-delete {
   min-height:42px; padding:8px 13px; border:1px solid var(--gold); border-radius:3px;
@@ -917,6 +920,7 @@ body.score-viewer-open { overflow:hidden; }
   .hdr-btn-cloud { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
   .score-open-btn { color:#8bbcff; border-color:rgba(139,188,255,.3); background:rgba(139,188,255,.06); }
   .score-open-btn:hover { background:rgba(139,188,255,.14); }
+  .score-library-import-row label { color:var(--cream); }
   .tab-bar { gap:6px; padding:5px; border:1px solid var(--border); border-radius:12px; background:#0d1114; margin-bottom:24px; }
   .tab-btn { flex:1; padding:10px 14px; letter-spacing:.2px; }
   .tab-btn::after { display:none; }
@@ -1453,6 +1457,11 @@ body.score-viewer-open { overflow:hidden; }
         <span class="score-file-meta" id="scoreFileMeta">Supabase 계정에 로그인하면 PDF 또는 이미지 악보를 저장할 수 있습니다.</span>
       </div>
       <div class="score-hint">비공개 저장 · PDF/JPG/PNG/WebP · 파일당 최대 20MB</div>
+      <div class="score-library-import-row">
+        <label for="pieceScoreLibrarySelect">악보 자료실에서 불러오기</label>
+        <select class="form-select" id="pieceScoreLibrarySelect" aria-label="악보 자료실에서 악보 불러오기"></select>
+        <div class="score-hint">자료실에 저장된 악보를 이 곡에 연결합니다. 같은 파일을 사용하므로 저장 공간을 추가로 쓰지 않습니다.</div>
+      </div>
       <details class="legacy-score-details">
         <summary>기존 외부 악보 링크 (이전 구글 드라이브 자료)</summary>
         <div class="score-link-row">
@@ -3040,9 +3049,11 @@ function deleteScoreLibraryFile(fileId) {
   if(!file)return;
   openConfirm(`<strong>${practiceEscape(file.title||file.fileName)}</strong> 악보를 자료실에서 삭제할까요?`,async()=>{
     try {
-      await CRepoSupabase.deleteScore(file.path);
+      const keepShared=scorePathIsReferenced(file.path,null,fileId);
+      if(!keepShared)await CRepoSupabase.deleteScore(file.path);
       state.scoreLibrary.files=state.scoreLibrary.files.filter(item=>item.id!==fileId);
-      saveAll(); renderScoreLibrary(); showToast('자료실 악보를 삭제했습니다');
+      saveAll(); renderScoreLibrary();
+      showToast(keepShared?'자료실에서 제거했고 다른 곡에서 사용하는 악보 파일은 유지했습니다':'자료실 악보를 삭제했습니다');
     } catch(error) { showToast(error.message||'악보 파일 삭제에 실패했습니다'); }
   });
 }
@@ -3122,6 +3133,25 @@ function setScoreEditorState(d,message) {
     (CRepoSupabase.user()?'저장된 악보 파일이 없습니다.':'Supabase 계정에 로그인하면 악보를 저장할 수 있습니다.'));
 }
 
+function populateScoreLibraryPicker(d) {
+  const select=document.getElementById('pieceScoreLibrarySelect');
+  if(!select)return;
+  ensureScoreLibrary();
+  const files=state.scoreLibrary.files;
+  const options=files.map(file=>{
+    const category=state.scoreLibrary.categories.find(item=>item.id===file.categoryId);
+    const name=file.fileName||file.title||'이름 없는 악보';
+    return `<option value="${practiceEscape(file.id)}">${practiceEscape(category?.name||'카테고리 없음')} · ${practiceEscape(name)}</option>`;
+  }).join('');
+  select.innerHTML=`<option value="">${files.length?'자료실 악보 선택':'자료실에 저장된 악보가 없습니다'}</option>${options}`;
+  select.disabled=!files.length;
+  select.value=files.find(file=>file.path===d.scoreStoragePath)?.id||'';
+  select.onchange=()=>{
+    const fileId=select.value;
+    if(fileId)attachLibraryScoreToPiece(fileId);
+  };
+}
+
 function newScoreObjectId() {
   if(crypto.randomUUID)return crypto.randomUUID();
   const bytes=new Uint8Array(16); crypto.getRandomValues(bytes);
@@ -3139,6 +3169,30 @@ function scorePathIsArchived(path) {
     concertPieceData(item,true).scoreStoragePath===path));
 }
 
+function scorePathIsReferenced(path,exceptPieceTitle=null,exceptLibraryFileId=null) {
+  if(!path)return false;
+  const pieceReference=Object.entries(state.pieces||{}).some(([title,data])=>
+    title!==exceptPieceTitle&&data.scoreStoragePath===path);
+  const libraryReference=(state.scoreLibrary?.files||[]).some(file=>
+    file.id!==exceptLibraryFileId&&file.path===path);
+  return pieceReference||libraryReference||scorePathIsArchived(path);
+}
+
+async function attachLibraryScoreToPiece(fileId) {
+  if(!editingPiece)return;
+  const file=(state.scoreLibrary?.files||[]).find(item=>item.id===fileId);
+  if(!file)return;
+  if(!CRepoSupabase.user()){showToast('악보 자료실 파일을 연결하려면 Supabase 계정에 로그인해주세요');return;}
+  const data=getPieceData(editingPiece);
+  if(data.scoreStoragePath===file.path){showToast('이미 연결된 악보입니다');return;}
+  data.scoreStoragePath=file.path;
+  data.scoreFileName=file.fileName||file.title||'악보';
+  data.scoreMimeType=file.mimeType||'';
+  data.scoreLibraryFileId=file.id;
+  saveAll(); setScoreEditorState(data); render();
+  showToast('악보 자료실에서 곡에 연결했습니다');
+}
+
 async function handleScoreFileSelection(event) {
   const file=event.target.files?.[0];
   event.target.value='';
@@ -3149,6 +3203,7 @@ async function handleScoreFileSelection(event) {
   const user=CRepoSupabase.user();
   if(!user){showToast('악보를 저장하려면 먼저 Supabase 계정에 로그인해주세요');return;}
   const title=editingPiece, data=getPieceData(title), previousPath=data.scoreStoragePath;
+  const previousWasLibraryLinked=!!data.scoreLibraryFileId;
   setScoreEditorState(data,'Supabase에 악보를 올리는 중…');
   try {
     const objectPath=newScoreObjectPath(user.id,'',file.type);
@@ -3156,11 +3211,12 @@ async function handleScoreFileSelection(event) {
     data.scoreStoragePath=objectPath;
     data.scoreFileName=file.name;
     data.scoreMimeType=file.type;
+    delete data.scoreLibraryFileId;
     saveAll();
     setScoreEditorState(data);
     render();
     showToast('악보를 Supabase에 저장했습니다');
-    if(previousPath&&previousPath!==objectPath&&!scorePathIsArchived(previousPath)) {
+    if(previousPath&&previousPath!==objectPath&&!previousWasLibraryLinked&&!scorePathIsReferenced(previousPath)) {
       try { await CRepoSupabase.deleteScore(previousPath); }
       catch(error) { console.warn('이전 악보 파일 정리 실패:',error); }
     }
@@ -3183,11 +3239,11 @@ async function removeEditingScore() {
   const button=document.getElementById('scoreFileDeleteBtn');
   if(button)button.disabled=true;
   try {
-    const keepForArchive=scorePathIsArchived(path);
-    if(!keepForArchive)await CRepoSupabase.deleteScore(path);
-    delete data.scoreStoragePath; delete data.scoreFileName; delete data.scoreMimeType;
+    const keepShared=!!data.scoreLibraryFileId||scorePathIsReferenced(path,editingPiece);
+    if(!keepShared)await CRepoSupabase.deleteScore(path);
+    delete data.scoreStoragePath; delete data.scoreFileName; delete data.scoreMimeType; delete data.scoreLibraryFileId;
     saveAll(); setScoreEditorState(data); render();
-    showToast(keepForArchive?'레퍼토리에서 연결을 지웠고 보관본 파일은 유지했습니다':'Supabase 악보 파일을 삭제했습니다');
+    showToast(keepShared?'레퍼토리 연결을 해제했고 공유 중인 악보 파일은 유지했습니다':'Supabase 악보 파일을 삭제했습니다');
   } catch(error) {
     showToast(error.message||'악보 파일 삭제에 실패했습니다');
   } finally { if(button)button.disabled=false; }
@@ -3265,6 +3321,7 @@ function openModal(title,catName,catId) {
   scoreFileInput.value='';
   scoreFileInput.onchange=handleScoreFileSelection;
   setScoreEditorState(d);
+  populateScoreLibraryPicker(d);
   const scoreLinkInput = document.getElementById('scoreLinkInput');
   const scoreOpenBtn   = document.getElementById('scoreOpenBtn');
   scoreLinkInput.value = d.scoreLink||'';
