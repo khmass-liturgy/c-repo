@@ -1498,6 +1498,11 @@ body.score-viewer-open { overflow:hidden; }
       <input class="form-input" id="newPieceComposer" type="text" placeholder="작곡자 이름">
     </div>
     <div class="form-row">
+      <label class="form-label" for="newPieceScoreLibrarySelect">악보 자료실에서 곡 선택 (선택 사항)</label>
+      <select class="form-select" id="newPieceScoreLibrarySelect" aria-label="악보 자료실에서 레퍼토리 곡 선택"></select>
+      <div class="score-hint">자료실 곡을 고르면 곡명을 채우고 저장된 악보를 레퍼토리에 연결합니다.</div>
+    </div>
+    <div class="form-row">
       <label class="form-label">카테고리 *</label>
       <select class="form-select" id="newPieceCat"></select>
     </div>
@@ -3427,20 +3432,42 @@ function openAddPieceModal(presetCatId) {
   });
   document.getElementById('newPieceTitle').value='';
   document.getElementById('newPieceComposer').value='';
+  populateNewPieceScorePicker();
   document.getElementById('newPieceStatus').value='암보';
   document.getElementById('addPieceModal').classList.add('open');
   setTimeout(()=>document.getElementById('newPieceTitle').focus(),50);
 }
 function closeAddModal(){document.getElementById('addPieceModal').classList.remove('open');}
+function populateNewPieceScorePicker() {
+  const select=document.getElementById('newPieceScoreLibrarySelect');
+  if(!select)return;
+  ensureScoreLibrary();
+  const files=state.scoreLibrary.files;
+  const options=files.map(file=>{
+    const category=state.scoreLibrary.categories.find(item=>item.id===file.categoryId);
+    return `<option value="${practiceEscape(file.id)}">${practiceEscape(category?.name||'카테고리 없음')} · ${practiceEscape(file.title||file.fileName||'이름 없는 악보')}</option>`;
+  }).join('');
+  select.innerHTML=`<option value="">${files.length?'자료실 곡 선택':'자료실에 저장된 악보가 없습니다'}</option>${options}`;
+  select.value='';
+  select.disabled=!files.length;
+  select.onchange=()=>{
+    const file=files.find(item=>item.id===select.value);
+    if(file)document.getElementById('newPieceTitle').value=file.title||file.fileName?.replace(/\.[^.]+$/,'')||'';
+  };
+}
 function saveNewPiece() {
   const title=document.getElementById('newPieceTitle').value.trim();
   const composer=document.getElementById('newPieceComposer').value.trim();
   const catId=document.getElementById('newPieceCat').value;
   const status=document.getElementById('newPieceStatus').value;
+  const fileId=document.getElementById('newPieceScoreLibrarySelect')?.value||'';
+  const scoreFile=state.scoreLibrary?.files?.find(file=>file.id===fileId);
   if(!title){const el=document.getElementById('newPieceTitle');el.classList.add('error');setTimeout(()=>el.classList.remove('error'),1500);return;}
+  if(fileId&&!scoreFile){showToast('선택한 자료실 악보를 찾을 수 없습니다. 목록을 새로 확인해주세요');return;}
   if(categories.some(c=>c.pieces.some(p=>p.title===title))){showToast('같은 이름의 곡이 이미 있습니다');return;}
   getCatById(catId).pieces.push({title,composer});
   state.pieces[title]={status,performances:[],memo:PIECE_PRACTICE_NOTES[title]||'',lastPlayed:null,duration:DEFAULT_DURATIONS[title]??null};
+  if(scoreFile)Object.assign(state.pieces[title],{scoreStoragePath:scoreFile.path,scoreFileName:scoreFile.fileName||scoreFile.title||'악보',scoreMimeType:scoreFile.mimeType||'',scoreLibraryFileId:scoreFile.id});
   saveAll();closeAddModal();render();showToast(`"${title}" 추가됨`);
 }
 

@@ -33,7 +33,11 @@ const elements = {
   scoreFileOpenBtn: { style: {} },
   scoreFileDeleteBtn: { style: {}, disabled: false },
   scoreFileMeta: { textContent: '' },
-  pieceScoreLibrarySelect: { innerHTML: '', value: '', disabled: false, onchange: null }
+  pieceScoreLibrarySelect: { innerHTML: '', value: '', disabled: false, onchange: null },
+  newPieceScoreLibrarySelect: { innerHTML: '', value: '', disabled: false, onchange: null },
+  newPieceTitle: { value: '', classList: { add() {}, remove() {} } },
+  newPieceComposer: { value: '' }, newPieceCat: { value: 'repertoire' }, newPieceStatus: { value: '암보' },
+  addPieceModal: { classList: { add() {}, remove() {} } }
 };
 let idCounter = 0;
 let loggedIn = { id: 'user-123' };
@@ -55,7 +59,10 @@ const context = vm.createContext({
   render() {},
   openConfirm: (message, callback) => { confirmCallback = callback; },
   state: { pieces: {}, concertPlans: [], concertArchives: [] }, editingPiece: null,
-  categories: [], scoreLibrarySelectedCategoryId: 'all', editingScoreLibraryCategoryId: null
+  categories: [], scoreLibrarySelectedCategoryId: 'all', editingScoreLibraryCategoryId: null,
+  PIECE_PRACTICE_NOTES: {}, DEFAULT_DURATIONS: {}, currentCatTab: 'all',
+  getCatById: id => context.categories.find(category => category.id === id),
+  closeAddModal() {}, render() {}
 });
 vm.runInContext([
   'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'newScoreObjectPath', 'saveAll', 'formatScoreFileSize',
@@ -63,7 +70,7 @@ vm.runInContext([
   'saveScoreLibraryCategory', 'deleteScoreLibraryCategory', 'moveScoreLibraryFile',
   'handleScoreLibraryUpload', 'deleteScoreLibraryFile', 'getPieceData', 'setScoreEditorState',
   'populateScoreLibraryPicker', 'scorePathIsArchived', 'scorePathIsReferenced',
-  'attachLibraryScoreToPiece', 'removeEditingScore'
+  'attachLibraryScoreToPiece', 'removeEditingScore', 'populateNewPieceScorePicker', 'saveNewPiece'
 ].map(source).join('\n'), context);
 const run = code => vm.runInContext(code, context);
 
@@ -105,6 +112,20 @@ async function main() {
   assert.ok(container.innerHTML.includes(`value="${secondCategoryId}"`), 'Move control lists other categories');
 
   const fileId = run('state.scoreLibrary.files[0].id');
+  context.categories.push({ id: 'repertoire', name: '레파토리', icon: '🎼', pieces: [] });
+  run('populateNewPieceScorePicker()');
+  assert.ok(elements.newPieceScoreLibrarySelect.innerHTML.includes('바흐_무반주_1006'), 'New repertoire picker lists library scores');
+  elements.newPieceScoreLibrarySelect.value = fileId;
+  elements.newPieceScoreLibrarySelect.onchange();
+  assert.equal(elements.newPieceTitle.value, '바흐_무반주_1006', 'Selecting a library score fills the repertoire title');
+  elements.newPieceStatus.value = '연습중';
+  run('saveNewPiece()');
+  assert.equal(context.categories[0].pieces[0].title, '바흐_무반주_1006');
+  assert.equal(run("state.pieces['바흐_무반주_1006'].scoreStoragePath"), uploaded[0].path, 'New repertoire entry reuses the library score path');
+  assert.equal(run("state.pieces['바흐_무반주_1006'].scoreLibraryFileId"), fileId);
+  delete context.state.pieces['바흐_무반주_1006'];
+  context.categories[0].pieces.length = 0;
+
   run(`moveScoreLibraryFile('${fileId}','${secondCategoryId}')`);
   assert.equal(run('state.scoreLibrary.files[0].categoryId'), secondCategoryId);
   assert.equal(JSON.parse(stored.get('guitar_repertory_v4')).state.scoreLibrary.files[0].categoryId, secondCategoryId,
@@ -116,7 +137,7 @@ async function main() {
 
   run(`deleteScoreLibraryFile('${fileId}')`);
   await confirmCallback();
-  assert.equal(deleted.length, 1);
+  assert.equal(deleted.length, 1, 'Deleting an unreferenced library entry removes its file');
   assert.equal(run('state.scoreLibrary.files.length'), 0);
   run(`deleteScoreLibraryCategory('${secondCategoryId}')`);
   await confirmCallback();
