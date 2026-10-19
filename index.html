@@ -292,6 +292,39 @@ h1 em { font-style:italic; color:var(--gold); }
 .score-hint {
   font-size:15px; color:var(--muted); margin-top:5px; line-height:1.5;
 }
+.score-file-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.score-file-input { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+.score-file-label, .score-file-open, .score-file-delete {
+  min-height:42px; padding:8px 13px; border:1px solid var(--gold); border-radius:3px;
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+  color:var(--gold); background:rgba(138,109,62,.1); font:400 14px 'Noto Sans KR',sans-serif;
+}
+.score-file-open { background:rgba(42,100,160,.08); border-color:rgba(42,100,160,.45); color:#2a64a0; text-decoration:none; }
+.score-file-delete { border-color:var(--border); color:var(--muted); background:transparent; }
+.score-file-label:hover, .score-file-open:hover { filter:brightness(.94); }
+.score-file-meta { min-width:100%; color:var(--muted); font-size:13px; }
+.legacy-score-details { margin-top:12px; color:var(--muted); font-size:13px; }
+.legacy-score-details summary { cursor:pointer; }
+.legacy-score-details .score-link-row { margin-top:8px; }
+.legacy-score-details .score-link-input { color:var(--cream); }
+.score-viewer {
+  position:fixed; inset:0; z-index:1200; background:#111; color:#fff;
+  display:none; flex-direction:column; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.score-viewer.open { display:flex; }
+.score-viewer-bar { flex:0 0 auto; min-height:54px; display:flex; align-items:center; gap:10px; padding:6px 12px; background:#1d1d1d; }
+.score-viewer-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; font-size:15px; }
+.score-viewer-button { min-width:42px; min-height:42px; padding:7px 11px; color:#fff; background:#333; border:1px solid #555; border-radius:4px; font:inherit; cursor:pointer; }
+.score-viewer-stage { flex:1 1 auto; min-height:0; display:flex; justify-content:center; overflow:auto; background:#262626; }
+.score-viewer-stage iframe { width:100%; height:100%; min-height:100%; border:0; background:#fff; }
+.score-viewer-stage img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; align-self:center; }
+body.score-viewer-open { overflow:hidden; }
+@media (max-width:700px) {
+  .score-viewer-bar { min-height:58px; }
+  .score-viewer-title { font-size:13px; }
+  .score-viewer-button { min-width:46px; min-height:46px; }
+  .score-file-open, .score-file-label, .score-file-delete { min-height:46px; }
+}
 
 /* ── 셋리스트 카테고리 표시 ── */
 .cat-setlist-badge {
@@ -1355,15 +1388,22 @@ h1 em { font-style:italic; color:var(--gold); }
       </div>
     </div>
     <div class="modal-section">
-      <span class="modal-label">악보 링크 (구글 드라이브)</span>
-      <div class="score-link-row">
-        <input class="score-link-input" id="scoreLinkInput" type="url"
-          placeholder="구글 드라이브 공유 링크를 붙여넣으세요">
-        <a class="score-open-btn disabled" id="scoreOpenBtn" href="#" target="_blank" rel="noopener">
-          📄 열기
-        </a>
+      <span class="modal-label">악보 파일 · Supabase 저장</span>
+      <div class="score-file-row">
+        <input class="score-file-input" id="scoreFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+        <label class="score-file-label" for="scoreFileInput">＋ PDF·이미지 올리기</label>
+        <button class="score-file-open" id="scoreFileOpenBtn" type="button" style="display:none" onclick="openEditingScore()">📖 태블릿에서 보기</button>
+        <button class="score-file-delete" id="scoreFileDeleteBtn" type="button" style="display:none" onclick="removeEditingScore()">파일 삭제</button>
+        <span class="score-file-meta" id="scoreFileMeta">Supabase 계정에 로그인하면 PDF 또는 이미지 악보를 저장할 수 있습니다.</span>
       </div>
-      <div class="score-hint">구글 드라이브 파일 → 우클릭 → 공유 → 링크 복사</div>
+      <div class="score-hint">비공개 저장 · PDF/JPG/PNG/WebP · 파일당 최대 20MB</div>
+      <details class="legacy-score-details">
+        <summary>기존 외부 악보 링크 (이전 구글 드라이브 자료)</summary>
+        <div class="score-link-row">
+          <input class="score-link-input" id="scoreLinkInput" type="url" placeholder="기존 공유 링크">
+          <a class="score-open-btn disabled" id="scoreOpenBtn" href="#" target="_blank" rel="noopener">📄 열기</a>
+        </div>
+      </details>
     </div>
     <div class="modal-section">
       <span class="modal-label">곡 설명 · 주의 포인트 · 메모</span>
@@ -1521,6 +1561,14 @@ h1 em { font-style:italic; color:var(--gold); }
 </div>
 
 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileImport(event)">
+<div class="score-viewer" id="scoreViewer" aria-label="악보 보기" aria-modal="true" role="dialog">
+  <div class="score-viewer-bar">
+    <button class="score-viewer-button" type="button" onclick="closeScoreViewer()" aria-label="악보 닫기">✕</button>
+    <strong class="score-viewer-title" id="scoreViewerTitle">악보</strong>
+    <button class="score-viewer-button" id="scoreFullscreenBtn" type="button" onclick="toggleScoreFullscreen()">전체 화면</button>
+  </div>
+  <div class="score-viewer-stage" id="scoreViewerStage"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
@@ -1792,6 +1840,7 @@ let metronomeBeats=Math.min(6,Math.max(2,parseInt(localStorage.getItem('guitar_m
 let metronomeRunning=false, metronomeTimerId=null, metronomeBeatIndex=0, metronomeAudioContext=null;
 let tunerRunning=false, tunerStream=null, tunerAudioContext=null, tunerAnalyser=null, tunerInputGain=null, tunerFrameId=null, tunerLastSampleAt=0;
 let performanceTimerRunning=false, performanceTimerElapsedMs=0, performanceTimerStartedAt=0, performanceTimerId=null;
+let scoreWakeLock=null;
 
 function loadAll() {
   try {
@@ -2487,9 +2536,9 @@ function renderCategories() {
       item.innerHTML=`
         ${reorderHtml}
         <div class="piece-info">
-          <span class="piece-title${isItalic?' italic':''}${d.scoreLink?' has-score':''}">${practiceEscape(p.title)}</span>
-          ${d.scoreLink
-            ? `<a class="score-btn has-link" href="${practiceEscape(safeExternalUrl(d.scoreLink))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="악보 열기">📄 악보</a>`
+          <span class="piece-title${isItalic?' italic':''}${d.scoreLink||d.scoreStoragePath?' has-score':''}">${practiceEscape(p.title)}</span>
+          ${d.scoreStoragePath||safeExternalUrl(d.scoreLink)
+            ? `<button class="score-btn has-link" type="button" title="${d.scoreStoragePath?'태블릿에서 악보 보기':'기존 악보 링크 열기'}">📄 악보</button>`
             : ''}
           ${d.memo?.trim()
             ? `<span class="memo-icon" title="메모: ${practiceEscape(d.memo.trim().slice(0,80))}${d.memo.trim().length>80?'…':''}">📝</span>`
@@ -2509,6 +2558,11 @@ function renderCategories() {
       item.querySelector('.status-badge').addEventListener('click', e => cycleStatus(e, p.title));
       item.querySelector('.record-btn').addEventListener('click', e => quickPlay(e, p.title));
       item.querySelector('.piece-del-btn').addEventListener('click', e => confirmDeletePieceInline(e, p.title, cat.id));
+      item.querySelector('.score-btn')?.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        if (d.scoreStoragePath) openStoredScore(d.scoreStoragePath,d.scoreFileName,d.scoreMimeType,p.title);
+        else { const url=safeExternalUrl(d.scoreLink); if(url) window.open(url,'_blank','noopener'); }
+      });
       const upBtn = item.querySelector('.move-up-btn');
       if (upBtn) upBtn.addEventListener('click', e => movePiece(e, cat.id, p.title, -1));
       const downBtn = item.querySelector('.move-down-btn');
@@ -2673,7 +2727,8 @@ function archiveConcertPlan(id) {
     const data=concertPieceData(item), meta=getPieceMeta(item.title);
     return {title:item.title,comment:item.comment||'',commentDuration:item.commentDuration??null,
       savedPiece:{composer:meta?.composer||item.savedPiece?.composer||'',duration:data.duration??null,
-        memo:data.memo||'',scoreLink:data.scoreLink||''}};
+        memo:data.memo||'',scoreLink:data.scoreLink||'',scoreStoragePath:data.scoreStoragePath||'',
+        scoreFileName:data.scoreFileName||'',scoreMimeType:data.scoreMimeType||''}};
   });
   state.concertArchives=state.concertArchives||[];
   state.concertArchives.unshift(archive);
@@ -2692,12 +2747,13 @@ function renderConcertArchives() {
   const cards=archives.map((plan,index)=>{
     const rows=plan.pieces.map((item,pieceIndex)=>{
       const data=concertPieceData(item,true), score=safeExternalUrl(data.scoreLink||'');
+      const hasStoredScore=!!data.scoreStoragePath;
       return `<div class="concert-archive-step">
         <small>${pieceIndex+1}번 곡 전 멘트 · ${formatDuration(item.commentDuration||0)}</small>
         <p class="concert-archive-text">${practiceEscape(item.comment||'등록된 멘트 없음')}</p>
         <h4>${pieceIndex+1}. ${practiceEscape(item.title)}${data.composer?` — ${practiceEscape(data.composer)}`:''}</h4>
         <span class="concert-total">곡 시간 ${data.duration!=null?formatDuration(data.duration):'미입력'}</span>
-        ${score?` <a class="score-btn has-link" href="${practiceEscape(score)}" target="_blank" rel="noopener">📄 악보</a>`:''}
+        ${hasStoredScore?` <button class="score-btn has-link archive-score-btn" type="button" data-score-path="${practiceEscape(data.scoreStoragePath)}" data-score-name="${practiceEscape(data.scoreFileName||'악보')}" data-score-mime="${practiceEscape(data.scoreMimeType||'')}" data-score-title="${practiceEscape(item.title)}">📄 악보</button>`:score?` <a class="score-btn has-link" href="${practiceEscape(score)}" target="_blank" rel="noopener">📄 악보</a>`:''}
         ${data.memo?`<details><summary>보관 당시 곡 설명</summary><p class="concert-archive-text">${practiceEscape(data.memo)}</p></details>`:''}
       </div>`;
     }).join('');
@@ -2736,6 +2792,8 @@ function renderConcertPlans() {
     return `<section class="concert-plan"><div class="concert-plan-head"><div class="concert-plan-title"><input type="text" value="${practiceEscape(plan.title)}" aria-label="연주회 이름" onchange="updateConcertPlan('${plan.id}','title',this.value)" placeholder="연주회 이름"></div><div class="concert-plan-summary" id="concertSummary_${plan.id}">${practiceEscape(concertTimeSummary(plan))}</div></div><div class="concert-plan-grid"><div class="form-row"><label class="form-label">연주 날짜</label><input class="form-input" type="date" value="${practiceEscape(plan.date)}" onchange="updateConcertPlan('${plan.id}','date',this.value)"></div><div class="form-row"><label class="form-label">연주 시간</label><input class="form-input" type="time" value="${practiceEscape(plan.time)}" onchange="updateConcertPlan('${plan.id}','time',this.value)"></div><div class="form-row"><label class="form-label">연주 장소</label><input class="form-input" type="text" value="${practiceEscape(plan.venue)}" onchange="updateConcertPlan('${plan.id}','venue',this.value)" placeholder="예: 성당 대성전"></div></div><div class="concert-piece-panel"><div class="concert-piece-head"><strong>연주 프로그램</strong><span class="concert-total">${plan.pieces.length}곡 · 음악 ${formatDuration(musicDuration)} + 멘트 ${formatDuration(commentDuration)} = 총 ${formatDuration(total)}</span></div><div class="concert-picker"><select class="form-select" id="concertPiecePick_${plan.id}" aria-label="레퍼토리 곡 선택"><option value="">레퍼토리에서 곡 선택</option>${options}</select><button class="btn-primary concert-create-btn" type="button" onclick="addConcertPiece('${plan.id}')">＋ 프로그램에 추가</button></div><div class="concert-piece-list">${rows||'<div class="concert-empty">위 목록에서 레퍼토리 곡을 골라 연주 순서대로 추가하세요.</div>'}</div></div><div class="concert-note form-row"><label class="form-label">연주회 전체 멘트</label><textarea class="form-input" onchange="updateConcertPlan('${plan.id}','comment',this.value)" placeholder="개회·마무리 등 전체 진행 멘트를 적어주세요.">${practiceEscape(plan.comment)}</textarea></div><div class="concert-plan-actions"><button class="btn-primary" type="button" onclick="archiveConcertPlan('${plan.id}')">완료 후 보관</button><button class="btn-ghost concert-delete" type="button" onclick="confirmDeleteConcertPlan('${plan.id}')">이 연주회 준비 삭제</button></div></section>`;
   }).join('');
   container.innerHTML=`<div class="concert-topline"><div><h2>연주회 준비</h2><p>레퍼토리 곡을 편집하고, 곡 전 멘트와 멘트 시간까지 더해 실제 진행 시간을 구성하세요.</p></div><button class="btn-primary concert-create-btn" type="button" onclick="createConcertPlan()">＋ 새 연주회 준비</button></div>${planHtml||'<div class="empty-state">준비 중인 연주회가 없습니다.<br>새 연주회 준비를 만들어 프로그램을 구성해보세요.</div>'}${renderConcertArchives()}`;
+  container.querySelectorAll('.archive-score-btn').forEach(button=>button.addEventListener('click',()=>
+    openStoredScore(button.dataset.scorePath,button.dataset.scoreName,button.dataset.scoreMime,button.dataset.scoreTitle)));
 }
 
 function renderTimeline() {
@@ -2801,6 +2859,125 @@ function reorderPiece(catId, draggedTitle, targetTitle, insertBefore) {
 }
 
 /* ══════════════ PIECE MODAL ══════════════ */
+function setScoreEditorState(d,message) {
+  const openBtn=document.getElementById('scoreFileOpenBtn');
+  const deleteBtn=document.getElementById('scoreFileDeleteBtn');
+  const meta=document.getElementById('scoreFileMeta');
+  if(!openBtn||!deleteBtn||!meta)return;
+  const hasFile=!!d.scoreStoragePath;
+  openBtn.style.display=hasFile?'inline-flex':'none';
+  deleteBtn.style.display=hasFile?'inline-flex':'none';
+  meta.textContent=message||(hasFile?`저장된 파일: ${d.scoreFileName||'악보 파일'}`:
+    (CRepoSupabase.user()?'저장된 악보 파일이 없습니다.':'Supabase 계정에 로그인하면 악보를 저장할 수 있습니다.'));
+}
+
+function newScoreObjectId() {
+  if(crypto.randomUUID)return crypto.randomUUID();
+  const bytes=new Uint8Array(16); crypto.getRandomValues(bytes);
+  return [...bytes].map(value=>value.toString(16).padStart(2,'0')).join('');
+}
+
+function scorePathIsArchived(path) {
+  return (state.concertArchives||[]).some(plan=>(plan.pieces||[]).some(item=>
+    concertPieceData(item,true).scoreStoragePath===path));
+}
+
+async function handleScoreFileSelection(event) {
+  const file=event.target.files?.[0];
+  event.target.value='';
+  if(!file||!editingPiece)return;
+  const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
+  if(!allowed.includes(file.type)){showToast('PDF, JPG, PNG, WebP 파일만 올릴 수 있습니다');return;}
+  if(file.size>20*1024*1024){showToast('악보 파일은 20MB 이하만 올릴 수 있습니다');return;}
+  const user=CRepoSupabase.user();
+  if(!user){showToast('악보를 저장하려면 먼저 Supabase 계정에 로그인해주세요');return;}
+  const title=editingPiece, data=getPieceData(title), previousPath=data.scoreStoragePath;
+  setScoreEditorState(data,'Supabase에 악보를 올리는 중…');
+  try {
+    const cleanName=file.name.normalize('NFC').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(-160)||'score';
+    const objectPath=`${user.id}/${newScoreObjectId()}/${cleanName}`;
+    await CRepoSupabase.uploadScore(objectPath,file);
+    data.scoreStoragePath=objectPath;
+    data.scoreFileName=file.name;
+    data.scoreMimeType=file.type;
+    saveAll();
+    setScoreEditorState(data);
+    render();
+    showToast('악보를 Supabase에 저장했습니다');
+    if(previousPath&&previousPath!==objectPath&&!scorePathIsArchived(previousPath)) {
+      try { await CRepoSupabase.deleteScore(previousPath); }
+      catch(error) { console.warn('이전 악보 파일 정리 실패:',error); }
+    }
+  } catch(error) {
+    setScoreEditorState(data);
+    showToast(error.message||'악보 업로드에 실패했습니다');
+  }
+}
+
+function openEditingScore() {
+  if(!editingPiece)return;
+  const data=getPieceData(editingPiece);
+  if(data.scoreStoragePath) openStoredScore(data.scoreStoragePath,data.scoreFileName,data.scoreMimeType,editingPiece);
+}
+
+async function removeEditingScore() {
+  if(!editingPiece)return;
+  const data=getPieceData(editingPiece), path=data.scoreStoragePath;
+  if(!path)return;
+  const button=document.getElementById('scoreFileDeleteBtn');
+  if(button)button.disabled=true;
+  try {
+    const keepForArchive=scorePathIsArchived(path);
+    if(!keepForArchive)await CRepoSupabase.deleteScore(path);
+    delete data.scoreStoragePath; delete data.scoreFileName; delete data.scoreMimeType;
+    saveAll(); setScoreEditorState(data); render();
+    showToast(keepForArchive?'레퍼토리에서 연결을 지웠고 보관본 파일은 유지했습니다':'Supabase 악보 파일을 삭제했습니다');
+  } catch(error) {
+    showToast(error.message||'악보 파일 삭제에 실패했습니다');
+  } finally { if(button)button.disabled=false; }
+}
+
+async function openStoredScore(path,fileName,mimeType,title) {
+  if(!path)return;
+  const viewer=document.getElementById('scoreViewer'), stage=document.getElementById('scoreViewerStage');
+  stage.replaceChildren();
+  document.getElementById('scoreViewerTitle').textContent=title||fileName||'악보';
+  viewer.classList.add('open'); document.body.classList.add('score-viewer-open');
+  try {
+    const url=await CRepoSupabase.createScoreUrl(path,3600);
+    const type=mimeType||'';
+    if(type==='application/pdf'||/\.pdf$/i.test(fileName||'')) {
+      const frame=document.createElement('iframe');
+      frame.title=`${title||fileName||'악보'} PDF`; frame.src=url; frame.setAttribute('allowfullscreen','');
+      stage.appendChild(frame);
+    } else {
+      const image=document.createElement('img'); image.alt=title||fileName||'악보'; image.src=url;
+      stage.appendChild(image);
+    }
+    try { scoreWakeLock=await navigator.wakeLock?.request('screen')||null; } catch(error) { scoreWakeLock=null; }
+  } catch(error) {
+    closeScoreViewer(); showToast(error.message||'악보를 불러오지 못했습니다. 로그인 상태를 확인해주세요');
+  }
+}
+
+async function closeScoreViewer() {
+  const viewer=document.getElementById('scoreViewer');
+  if(!viewer)return;
+  viewer.classList.remove('open'); document.body.classList.remove('score-viewer-open');
+  document.getElementById('scoreViewerStage')?.replaceChildren();
+  try { await scoreWakeLock?.release(); } catch(error) {}
+  scoreWakeLock=null;
+  if(document.fullscreenElement) { try { await document.exitFullscreen(); } catch(error) {} }
+}
+
+async function toggleScoreFullscreen() {
+  const viewer=document.getElementById('scoreViewer');
+  try {
+    if(document.fullscreenElement) await document.exitFullscreen();
+    else await viewer.requestFullscreen?.();
+  } catch(error) { showToast('이 브라우저에서는 전체 화면 전환을 지원하지 않습니다'); }
+}
+
 function openModal(title,catName,catId) {
   editingPiece=title;
   editingPieceCatId=catId;
@@ -2827,7 +3004,11 @@ function openModal(title,catName,catId) {
   memoEl.value = d.memo||'';
   memoEl.oninput = () => updateMemoEditor(memoEl);
   updateMemoEditor(memoEl);
-  // 악보 링크 초기화
+  // Supabase 악보와 기존 외부 링크 초기화
+  const scoreFileInput=document.getElementById('scoreFileInput');
+  scoreFileInput.value='';
+  scoreFileInput.onchange=handleScoreFileSelection;
+  setScoreEditorState(d);
   const scoreLinkInput = document.getElementById('scoreLinkInput');
   const scoreOpenBtn   = document.getElementById('scoreOpenBtn');
   scoreLinkInput.value = d.scoreLink||'';
@@ -3476,7 +3657,8 @@ function switchTab(tab){
 /* ══════════════ KEYBOARD ══════════════ */
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    if(document.getElementById('confirmOverlay').classList.contains('open'))closeConfirm();
+    if(document.getElementById('scoreViewer').classList.contains('open'))closeScoreViewer();
+    else if(document.getElementById('confirmOverlay').classList.contains('open'))closeConfirm();
     else if(document.getElementById('setlistPickerModal').classList.contains('open'))closeSetlistPicker();
     else if(document.getElementById('cloudModal').classList.contains('open'))closeCloudModal();
     else if(document.getElementById('addCatModal').classList.contains('open'))closeAddCatModal();

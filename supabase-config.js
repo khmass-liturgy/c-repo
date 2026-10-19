@@ -6,5 +6,6 @@
 window.C_REPO_SUPABASE = Object.freeze({
   url: 'https://itsrhbpjtiscnhndbkkf.supabase.co',
   publishableKey: 'sb_publishable_be4dgemABP_Ju7yclF42Jg_crfgjVOe',
-  table: 'practice_documents'
+  table: 'practice_documents',
+  scoreBucket: 'scores'
 });

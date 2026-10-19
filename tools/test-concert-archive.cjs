@@ -11,7 +11,7 @@ function source(name) {
   const firstLine = body.slice(0, body.indexOf('\n'));
   return firstLine.endsWith('}') ? firstLine : body.slice(0, body.indexOf('\n}') + 2);
 }
-const container = { innerHTML: '' };
+const container = { innerHTML: '', querySelectorAll: () => [] };
 const storage = new Map();
 let scheduled = 0;
 const context = vm.createContext({
@@ -24,12 +24,12 @@ vm.runInContext(`let state, categories, cloudApplyingRemote=false;\n` + [
   'saveAll', 'loadAll', 'safeExternalUrl', 'validPracticePayload', 'applyCloudPayload', 'deletePiece',
   'newConcertPlan', 'getConcertPlan', 'concertSourcePieces', 'concertPieceData', 'concertMusicDuration',
   'concertCommentDuration', 'concertDuration', 'formatConcertDate', 'concertTimeSummary',
-  'archiveConcertPlan', 'copyArchivedConcert', 'renderConcertArchives', 'renderConcertPlans'
+  'archiveConcertPlan', 'copyArchivedConcert', 'renderConcertArchives', 'renderConcertPlans', 'scorePathIsArchived'
 ].map(source).join('\n'), context);
 const run = code => vm.runInContext(code, context);
 run(`
 categories=[{id:'classical',name:'클래식',pieces:[{title:'첫 곡',composer:'작곡가 A'},{title:'둘째 곡',composer:'작곡가 B'}]}];
-state={pieces:{'첫 곡':{duration:180,memo:'곡 설명\\n둘째 줄',scoreLink:'https://example.com/score.pdf'},'둘째 곡':{duration:240}},concertPlans:[{
+state={pieces:{'첫 곡':{duration:180,memo:'곡 설명\\n둘째 줄',scoreLink:'https://example.com/score.pdf',scoreStoragePath:'user-id/score-id/score.pdf',scoreFileName:'score.pdf',scoreMimeType:'application/pdf'},'둘째 곡':{duration:240}},concertPlans:[{
   id:'old',title:'가을 <연주회>',date:'2026-10-18',time:'19:30',venue:'성당 & 강당',comment:'환영합니다\\n감사합니다',
   pieces:['첫 곡',{title:'둘째 곡',comment:'<script>alert(1)</script>',commentDuration:'0:45'}]
 }]};
@@ -44,6 +44,9 @@ assert.equal(scheduled, 1, 'Archive schedules existing cloud save');
 const archived = JSON.parse(run('JSON.stringify(state.concertArchives[0])'));
 assert.equal(archived.pieces[0].savedPiece.memo, '곡 설명\n둘째 줄');
 assert.equal(archived.pieces[0].savedPiece.scoreLink, 'https://example.com/score.pdf');
+assert.equal(archived.pieces[0].savedPiece.scoreStoragePath, 'user-id/score-id/score.pdf');
+assert.equal(archived.pieces[0].savedPiece.scoreFileName, 'score.pdf');
+assert.equal(run("scorePathIsArchived('user-id/score-id/score.pdf')"), true, 'Archive keeps its Supabase score object');
 assert.equal(archived.pieces[1].commentDuration, 45);
 assert.equal(archived.date, '2026-10-18');
 assert.equal(archived.time, '19:30');
@@ -52,6 +55,8 @@ assert.ok(!Number.isNaN(Date.parse(archived.completedAt)));
 assert.match(container.innerHTML, /완료된 연주회 · 1개/);
 assert.ok(!container.innerHTML.includes('<script>alert(1)</script>'));
 assert.ok(container.innerHTML.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+assert.ok(container.innerHTML.includes('archive-score-btn'));
+assert.ok(container.innerHTML.includes('user-id/score-id/score.pdf'));
 run("state.pieces['첫 곡'].duration=999; categories[0].pieces[0].composer='변경된 작곡가'; deletePiece('둘째 곡');");
 assert.equal(run('concertDuration(state.concertArchives[0])'), 465, 'Archive time survives repertoire edit/delete');
 assert.equal(run('JSON.stringify(state.concertArchives[0])'), JSON.stringify(archived));

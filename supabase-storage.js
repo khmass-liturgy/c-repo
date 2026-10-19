@@ -88,10 +88,41 @@
     return data;
   }
 
+  function getScoreStorage() {
+    const supabaseClient = getClient();
+    if (!supabaseClient) throw new Error('Supabase 프로젝트 설정이 필요합니다.');
+    if (!currentUser) throw new Error('Supabase 계정에 로그인한 뒤 악보를 저장해주세요.');
+    return supabaseClient.storage.from(config.scoreBucket || 'scores');
+  }
+
+  async function uploadScore(path, file) {
+    const { data, error } = await getScoreStorage().upload(path, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async function createScoreUrl(path, expiresIn = 3600) {
+    const { data, error } = await getScoreStorage().createSignedUrl(path, expiresIn);
+    if (error) throw error;
+    return data.signedUrl;
+  }
+
+  async function deleteScore(path) {
+    const { error } = await getScoreStorage().remove([path]);
+    if (error) throw error;
+  }
+
   function dispose() {
     authSubscription?.unsubscribe();
     authSubscription = null;
   }
 
-  root.CRepoSupabase = Object.freeze({ configured, init, user, signIn, signOut, load, save, dispose });
+  root.CRepoSupabase = Object.freeze({
+    configured, init, user, signIn, signOut, load, save,
+    uploadScore, createScoreUrl, deleteScore, dispose
+  });
 })(window);

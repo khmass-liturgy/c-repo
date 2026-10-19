@@ -48,11 +48,21 @@ async function main() {
           return { select(columns) { calls.push(['upsertSelect', columns]); return { single: async () => ({ data: { updated_at: remote.updated_at }, error: null }) }; } };
         }
       };
+    },
+    storage: {
+      from(bucket) {
+        calls.push(['storage', bucket]);
+        return {
+          upload: async (path, file, options) => { calls.push(['upload', path, file, options]); return { data: { path }, error: null }; },
+          createSignedUrl: async (path, expiresIn) => { calls.push(['signedUrl', path, expiresIn]); return { data: { signedUrl: 'https://project-ref.supabase.co/signed-score' }, error: null }; },
+          remove: async paths => { calls.push(['remove', paths]); return { error: null }; }
+        };
+      }
     }
   };
 
   const api = load(
-    { url: 'https://project-ref.supabase.co', publishableKey: 'sb_publishable_test', table: 'practice_documents' },
+    { url: 'https://project-ref.supabase.co', publishableKey: 'sb_publishable_test', table: 'practice_documents', scoreBucket: 'scores' },
     (url, key, options) => { calls.push(['createClient', url, key, options]); return client; }
   );
   assert.equal(api.configured(), true);
@@ -78,6 +88,18 @@ async function main() {
   assert.equal(upsert[2].onConflict, 'user_id');
   remote.payload = JSON.parse(JSON.stringify(upsert[1].payload));
   assert.equal(JSON.stringify((await api.load()).payload), JSON.stringify(payload));
+
+  const scoreFile = { name: '악보.pdf', type: 'application/pdf' };
+  const scorePath = `${user.id}/score-id/악보.pdf`;
+  assert.equal((await api.uploadScore(scorePath, scoreFile)).path, scorePath);
+  assert.equal(await api.createScoreUrl(scorePath), 'https://project-ref.supabase.co/signed-score');
+  await api.deleteScore(scorePath);
+  assert.equal(JSON.stringify(calls.find(call => call[0] === 'upload').slice(1)), JSON.stringify([scorePath, scoreFile, {
+    cacheControl: '3600', contentType: 'application/pdf', upsert: false
+  }]));
+  assert.equal(JSON.stringify(calls.find(call => call[0] === 'remove')[1]), JSON.stringify([scorePath]));
+  assert.ok(calls.filter(call => call[0] === 'storage').every(call => call[1] === 'scores'));
+  assert.equal(calls.find(call => call[0] === 'signedUrl')[2], 3600);
 
   authCallback('SIGNED_OUT', null);
   assert.equal(api.user(), null);
