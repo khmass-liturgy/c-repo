@@ -115,6 +115,17 @@ async function main() {
   run(`scoreLibrarySelectedCategoryId='${firstCategoryId}'`);
   await run('handleScoreLibraryUpload(uploadEvent)', context.uploadEvent = { target: { files: [pdf], value: '' } });
   assert.equal(uploaded.length, 1, 'Unauthenticated uploads are blocked');
+  loggedIn = { id: 'user-123' };
+  const batchEvent = { target: { files: [pdf,
+    { name: '악보.txt', type: 'text/plain', size: 100 },
+    { name: '너무큼.pdf', type: 'application/pdf', size: 21 * 1024 * 1024 },
+    { name: '두번째.png', type: 'image/png', size: 2048 }
+  ], value: 'selected' } };
+  await run('handleScoreLibraryUpload(uploadEvent)', context.uploadEvent = batchEvent);
+  assert.equal(batchEvent.target.value, '', 'Multi-file selection resets after upload');
+  assert.equal(uploaded.length, 3, 'Valid files upload while unsupported and oversized files are skipped');
+  assert.equal(run('state.scoreLibrary.files.length'), 2);
+  assert.ok(messages.at(-1).includes('2개 파일 저장 완료, 2개 실패'));
   console.log('SCORE_LIBRARY_TEST_OK: category CRUD, upload, organization, authentication, and persistence');
 }
 

@@ -2919,9 +2919,9 @@ function renderScoreLibrary() {
       <div class="score-library-actions"><button class="btn-ghost" type="button" data-library-action="rename">이름 변경</button><button class="btn-ghost concert-delete" type="button" data-library-action="delete-category">카테고리 삭제</button></div>
     </div>
     <div class="score-library-upload">
-      <input class="score-file-input" id="scoreLibraryFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
-      <label class="score-file-label" for="scoreLibraryFileInput">＋ 이 카테고리에 악보 올리기</label>
-      <span class="score-file-meta" id="scoreLibraryUploadStatus">PDF·이미지 파일을 선택하면 Supabase에 저장됩니다. (최대 20MB)</span>
+      <input class="score-file-input" id="scoreLibraryFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
+      <label class="score-file-label" for="scoreLibraryFileInput">＋ 이 카테고리에 악보 올리기 (여러 파일 선택 가능)</label>
+      <span class="score-file-meta" id="scoreLibraryUploadStatus">PDF·이미지 파일을 한 번에 여러 개 선택할 수 있습니다. (파일당 최대 20MB)</span>
     </div>
     <div class="score-library-list">${fileRows||'<div class="score-library-empty">이 카테고리에 악보가 없습니다. 파일을 올려 자료를 추가하세요.</div>'}</div>`:
     `<div class="score-library-empty">${categories.length?'왼쪽에서 카테고리를 선택하세요.':'먼저 자료실 카테고리를 만든 뒤 악보 파일을 올려주세요.'}</div>`;
@@ -2992,30 +2992,36 @@ function moveScoreLibraryFile(fileId,categoryId) {
 }
 
 function handleScoreLibraryUpload(event) {
-  const file=event.target.files?.[0]; event.target.value='';
+  const files=Array.from(event.target.files||[]); event.target.value='';
   const categoryId=scoreLibrarySelectedCategoryId;
-  if(!file)return;
-  const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
-  if(!allowed.includes(file.type)){showToast('PDF, JPG, PNG, WebP 파일만 올릴 수 있습니다');return;}
-  if(file.size>20*1024*1024){showToast('악보 파일은 20MB 이하만 올릴 수 있습니다');return;}
+  if(!files.length)return;
   const user=CRepoSupabase.user();
   if(!user){showToast('악보 자료실에 올리려면 Supabase 계정에 로그인해주세요');return;}
+  const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
   const status=document.getElementById('scoreLibraryUploadStatus');
-  if(status)status.textContent='Supabase에 파일을 올리는 중…';
+  let uploadedCount=0;
+  const failures=[];
   return (async()=>{
-    try {
-      const path=newScoreObjectPath(user.id,'library',file.type);
-      await CRepoSupabase.uploadScore(path,file);
-      const title=file.name.replace(/\.[^.]+$/,'').trim()||file.name;
-      state.scoreLibrary.files.push({id:`scorefile_${newScoreObjectId()}`,categoryId,title,fileName:file.name,
-        mimeType:file.type,size:file.size,path,uploadedAt:new Date().toISOString()});
-      saveAll(); renderScoreLibrary(); showToast('악보를 자료실에 저장했습니다');
-    } catch(error) {
-      const message=error.message||'자료실 업로드에 실패했습니다';
-      const currentStatus=document.getElementById('scoreLibraryUploadStatus');
-      if(currentStatus)currentStatus.textContent=message;
-      showToast(message);
+    for(let index=0;index<files.length;index++) {
+      const file=files[index];
+      if(status)status.textContent=`파일 업로드 중 (${index+1}/${files.length}): ${file.name}`;
+      if(!allowed.includes(file.type)){failures.push(`${file.name}: 지원하지 않는 형식`);continue;}
+      if(file.size>20*1024*1024){failures.push(`${file.name}: 20MB 초과`);continue;}
+      try {
+        const path=newScoreObjectPath(user.id,'library',file.type);
+        await CRepoSupabase.uploadScore(path,file);
+        const title=file.name.replace(/\.[^.]+$/,'').trim()||file.name;
+        state.scoreLibrary.files.push({id:`scorefile_${newScoreObjectId()}`,categoryId,title,fileName:file.name,
+          mimeType:file.type,size:file.size,path,uploadedAt:new Date().toISOString()});
+        uploadedCount++;
+      } catch(error) {
+        failures.push(`${file.name}: ${error.message||'업로드 실패'}`);
+      }
     }
+    if(uploadedCount){saveAll();renderScoreLibrary();}
+    const summary=`${uploadedCount}개 파일 저장 완료`+(failures.length?`, ${failures.length}개 실패`:'');
+    if(failures.length)console.warn('악보 자료실 업로드 실패:',failures);
+    showToast(summary);
   })();
 }
 
