@@ -20,7 +20,7 @@ const context = vm.createContext({
   scheduleCloudSave: () => scheduled++, showToast() {}, render() {}, fillDefaultDurations() {}, seedPracticeNotes() {}
 });
 vm.runInContext(`let state, categories, cloudApplyingRemote=false;\n` + [
-  'ensureConcertPlans', 'getPieceMeta', 'practiceEscape', 'parseDurationInput', 'formatDuration',
+  'ensureScoreLibrary', 'ensureConcertPlans', 'getPieceMeta', 'practiceEscape', 'parseDurationInput', 'formatDuration',
   'saveAll', 'loadAll', 'safeExternalUrl', 'validPracticePayload', 'applyCloudPayload', 'deletePiece',
   'newConcertPlan', 'getConcertPlan', 'concertSourcePieces', 'concertPieceData', 'concertMusicDuration',
   'concertCommentDuration', 'concertDuration', 'formatConcertDate', 'concertTimeSummary',

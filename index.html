@@ -574,6 +574,43 @@ body.score-viewer-open { overflow:hidden; }
 .repertory-view.active { display:block; }
 .concert-view { display:none; }
 .concert-view.active { display:block; }
+.score-library-view { display:none; }
+.score-library-view.active { display:block; }
+.score-library-topline { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.score-library-topline h2 { margin:0; font:600 25px 'Noto Serif KR',serif; color:var(--cream); }
+.score-library-topline p { margin:5px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
+.score-library-layout { display:grid; grid-template-columns:minmax(180px,240px) 1fr; gap:16px; align-items:start; }
+.score-library-categories, .score-library-panel { border:1px solid var(--border); border-radius:9px; background:#101418; padding:14px; }
+.score-library-categories { display:flex; flex-direction:column; gap:6px; }
+.score-library-category { width:100%; min-height:44px; padding:10px 12px; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--muted); font:400 14px 'Noto Sans KR',sans-serif; text-align:left; cursor:pointer; }
+.score-library-category.active { border-color:rgba(215,181,109,.35); background:rgba(138,109,62,.14); color:var(--gold2); }
+.score-library-category:hover { color:var(--gold2); }
+.score-library-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.score-library-panel-head h3 { margin:0; color:var(--cream); font:600 20px 'Noto Serif KR',serif; overflow-wrap:anywhere; }
+.score-library-actions { display:flex; gap:7px; flex-wrap:wrap; }
+.score-library-upload { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0; }
+.score-library-upload .score-file-meta { flex:1; min-width:180px; }
+.score-library-list { display:flex; flex-direction:column; gap:8px; }
+.score-library-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:12px; border:1px solid #30373d; border-radius:7px; background:#151a1e; }
+.score-library-item-title { color:var(--cream); font-size:15px; font-weight:500; overflow-wrap:anywhere; }
+.score-library-item-meta { margin-top:4px; color:var(--muted); font-size:12px; }
+.score-library-item-actions { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+.score-library-item-actions .form-select { min-width:130px; max-width:180px; font-size:13px; }
+.score-library-empty { padding:24px 12px; color:var(--muted); text-align:center; line-height:1.7; }
+@media (max-width:700px) {
+  .tab-bar { overflow-x:auto; scrollbar-width:thin; }
+  .tab-btn { flex:0 0 auto; padding:10px 13px; white-space:nowrap; }
+}
+@media (max-width:700px) {
+  .score-library-topline { align-items:flex-start; flex-direction:column; }
+  .score-library-layout { grid-template-columns:1fr; }
+  .score-library-categories { flex-direction:row; overflow-x:auto; }
+  .score-library-category { width:auto; flex:0 0 auto; white-space:nowrap; }
+  .score-library-item { grid-template-columns:1fr; }
+  .score-library-item-actions { justify-content:flex-start; }
+  .score-library-item-actions .form-select { flex:1; max-width:none; min-height:44px; }
+  .score-library-panel-head { align-items:flex-start; flex-direction:column; }
+}
 
 /* ── 연주회 준비 ── */
 .concert-topline { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }
@@ -1074,6 +1111,10 @@ body.score-viewer-open { overflow:hidden; }
 .concert-picker { flex-direction:column; }
 .concert-piece-meta { display:none; }
 }
+@media screen and (max-width:700px) {
+  .tab-bar { overflow-x:auto; scrollbar-width:thin; }
+  .tab-btn { flex:0 0 auto; padding:10px 13px; white-space:nowrap; }
+}
 </style>
 </head>
 <body>
@@ -1108,10 +1149,11 @@ body.score-viewer-open { overflow:hidden; }
   </header>
 
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('practice')">오늘의 연습</button>
-    <button class="tab-btn" onclick="switchTab('repertory')">레퍼토리</button>
-    <button class="tab-btn" onclick="switchTab('concerts')">연주회 준비</button>
-    <button class="tab-btn" onclick="switchTab('performances')">공연 이력</button>
+    <button class="tab-btn active" data-tab="practice" onclick="switchTab('practice')">오늘의 연습</button>
+    <button class="tab-btn" data-tab="repertory" onclick="switchTab('repertory')">레퍼토리</button>
+    <button class="tab-btn" data-tab="concerts" onclick="switchTab('concerts')">연주회 준비</button>
+    <button class="tab-btn" data-tab="scores" onclick="switchTab('scores')">악보 자료실</button>
+    <button class="tab-btn" data-tab="performances" onclick="switchTab('performances')">공연 이력</button>
   </div>
 
   <div id="practiceView" class="practice-view active">
@@ -1318,6 +1360,10 @@ body.score-viewer-open { overflow:hidden; }
 
   <div id="concertsView" class="concert-view">
     <div id="concertPlansContainer"></div>
+  </div>
+
+  <div id="scoreLibraryView" class="score-library-view">
+    <div id="scoreLibraryContainer"></div>
   </div>
 
   <!-- 인쇄 전용: 범례 -->
@@ -1568,6 +1614,21 @@ body.score-viewer-open { overflow:hidden; }
     <button class="score-viewer-button" id="scoreFullscreenBtn" type="button" onclick="toggleScoreFullscreen()">전체 화면</button>
   </div>
   <div class="score-viewer-stage" id="scoreViewerStage"></div>
+</div>
+<div class="modal-overlay" id="scoreLibraryCategoryModal" onclick="if(event.target===this)closeScoreLibraryCategoryModal()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title" id="scoreLibraryCategoryModalTitle">악보 카테고리</div>
+    <div class="form-row">
+      <label class="form-label" for="scoreLibraryCategoryName">카테고리 이름</label>
+      <input class="form-input" id="scoreLibraryCategoryName" type="text" maxlength="60" placeholder="예: 바흐, 연주회 프로그램">
+    </div>
+    <div class="modal-footer">
+      <div></div><div class="footer-right">
+        <button class="btn-ghost" type="button" onclick="closeScoreLibraryCategoryModal()">취소</button>
+        <button class="btn-primary" type="button" onclick="saveScoreLibraryCategory()">저장</button>
+      </div>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -1841,14 +1902,38 @@ let metronomeRunning=false, metronomeTimerId=null, metronomeBeatIndex=0, metrono
 let tunerRunning=false, tunerStream=null, tunerAudioContext=null, tunerAnalyser=null, tunerInputGain=null, tunerFrameId=null, tunerLastSampleAt=0;
 let performanceTimerRunning=false, performanceTimerElapsedMs=0, performanceTimerStartedAt=0, performanceTimerId=null;
 let scoreWakeLock=null;
+let scoreLibrarySelectedCategoryId='all';
+let editingScoreLibraryCategoryId=null;
+
+function ensureScoreLibrary() {
+  let changed=false;
+  if(!state.scoreLibrary||typeof state.scoreLibrary!=='object'||Array.isArray(state.scoreLibrary)) {
+    state.scoreLibrary={categories:[],files:[]}; changed=true;
+  }
+  if(!Array.isArray(state.scoreLibrary.categories)) { state.scoreLibrary.categories=[]; changed=true; }
+  if(!Array.isArray(state.scoreLibrary.files)) { state.scoreLibrary.files=[]; changed=true; }
+  const safeCategories=state.scoreLibrary.categories.filter(category=>category&&typeof category.id==='string'&&typeof category.name==='string');
+  const safeFiles=state.scoreLibrary.files.filter(file=>file&&typeof file.id==='string'&&typeof file.path==='string'&&typeof file.categoryId==='string');
+  if(safeCategories.length!==state.scoreLibrary.categories.length) { state.scoreLibrary.categories=safeCategories; changed=true; }
+  if(safeFiles.length!==state.scoreLibrary.files.length) { state.scoreLibrary.files=safeFiles; changed=true; }
+  return changed;
+}
 
 function loadAll() {
   try {
     const saved=localStorage.getItem('guitar_repertory_v4');
-    if (saved) { const p=JSON.parse(saved); categories=p.categories; state=p.state; fillDefaultDurations(); if(ensureConcertPlans()||seedPracticeNotes()) saveAll(); return; }
+    if (saved) {
+      const p=JSON.parse(saved); categories=p.categories; state=p.state;
+      fillDefaultDurations();
+      const libraryChanged=ensureScoreLibrary();
+      const concertChanged=ensureConcertPlans();
+      const notesChanged=seedPracticeNotes();
+      if(libraryChanged||concertChanged||notesChanged)saveAll();
+      return;
+    }
   } catch(e){}
   categories=JSON.parse(JSON.stringify(INITIAL_CATEGORIES));
-  state={pieces:{},collapsed:{},concertPlans:[],concertArchives:[]};
+  state={pieces:{},collapsed:{},concertPlans:[],concertArchives:[],scoreLibrary:{categories:[],files:[]}};
   categories.forEach(c=>c.pieces.forEach(p=>{
     state.pieces[p.title]={status:'암보',performances:[],memo:PIECE_PRACTICE_NOTES[p.title]||'',lastPlayed:null,duration:null};
   }));
@@ -1856,6 +1941,7 @@ function loadAll() {
 }
 
 function saveAll() {
+  ensureScoreLibrary();
   try { localStorage.setItem('guitar_repertory_v4',JSON.stringify({categories,state})); } catch(e){}
   scheduleCloudSave(); // 로그인 상태에서는 Supabase에 자동 저장 (디바운스)
 }
@@ -2358,7 +2444,7 @@ function renderWeekGrid() {
 }
 
 /* ══════════════ RENDER ══════════════ */
-function render() { renderDailyPracticeMotto(); renderStats(); renderPracticeBanner(); renderPracticePlan(); renderWeekGrid(); renderCatTabs(); renderCategories(); renderConcertPlans(); updatePracticeClock(); updateMetronomeUI(); updatePerformanceTimerUI(); }
+function render() { renderDailyPracticeMotto(); renderStats(); renderPracticeBanner(); renderPracticePlan(); renderWeekGrid(); renderCatTabs(); renderCategories(); renderConcertPlans(); renderScoreLibrary(); updatePracticeClock(); updateMetronomeUI(); updatePerformanceTimerUI(); }
 
 function renderStats() {
   const all=Object.values(state.pieces);
@@ -2794,6 +2880,156 @@ function renderConcertPlans() {
   container.innerHTML=`<div class="concert-topline"><div><h2>연주회 준비</h2><p>레퍼토리 곡을 편집하고, 곡 전 멘트와 멘트 시간까지 더해 실제 진행 시간을 구성하세요.</p></div><button class="btn-primary concert-create-btn" type="button" onclick="createConcertPlan()">＋ 새 연주회 준비</button></div>${planHtml||'<div class="empty-state">준비 중인 연주회가 없습니다.<br>새 연주회 준비를 만들어 프로그램을 구성해보세요.</div>'}${renderConcertArchives()}`;
   container.querySelectorAll('.archive-score-btn').forEach(button=>button.addEventListener('click',()=>
     openStoredScore(button.dataset.scorePath,button.dataset.scoreName,button.dataset.scoreMime,button.dataset.scoreTitle)));
+}
+
+function formatScoreFileSize(bytes) {
+  const size=Number(bytes)||0;
+  return size<1024*1024?`${Math.max(1,Math.round(size/1024))}KB`:`${(size/(1024*1024)).toFixed(1)}MB`;
+}
+
+function renderScoreLibrary() {
+  const container=document.getElementById('scoreLibraryContainer');
+  if(!container)return;
+  ensureScoreLibrary();
+  const library=state.scoreLibrary, categories=library.categories, files=library.files;
+  if(scoreLibrarySelectedCategoryId!=='all'&&!categories.some(category=>category.id===scoreLibrarySelectedCategoryId))
+    scoreLibrarySelectedCategoryId='all';
+  const selected=categories.find(category=>category.id===scoreLibrarySelectedCategoryId)||null;
+  const counts=new Map(categories.map(category=>[category.id,files.filter(file=>file.categoryId===category.id).length]));
+  const categoryButtons=[`<button class="score-library-category${scoreLibrarySelectedCategoryId==='all'?' active':''}" type="button" data-library-category="all">전체 자료 <span>${files.length}</span></button>`,
+    ...categories.map(category=>`<button class="score-library-category${selected?.id===category.id?' active':''}" type="button" data-library-category="${practiceEscape(category.id)}">${practiceEscape(category.name)} <span>${counts.get(category.id)||0}</span></button>`)].join('');
+  const visibleFiles=files.filter(file=>scoreLibrarySelectedCategoryId==='all'||file.categoryId===scoreLibrarySelectedCategoryId)
+    .sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')));
+  const fileRows=visibleFiles.map(file=>{
+    const category=categories.find(item=>item.id===file.categoryId);
+    const categoryOptions=categories.map(item=>`<option value="${practiceEscape(item.id)}"${item.id===file.categoryId?' selected':''}>${practiceEscape(item.name)}</option>`).join('');
+    const date=file.uploadedAt?new Date(file.uploadedAt).toLocaleDateString('ko-KR'):'날짜 정보 없음';
+    return `<article class="score-library-item">
+      <div><div class="score-library-item-title">${practiceEscape(file.title||file.fileName||'이름 없는 악보')}</div>
+        <div class="score-library-item-meta">${practiceEscape(category?.name||'카테고리 없음')} · ${practiceEscape(file.fileName||'')} · ${formatScoreFileSize(file.size)} · ${practiceEscape(date)}</div></div>
+      <div class="score-library-item-actions">
+        <button class="score-file-open" type="button" data-library-open="${practiceEscape(file.id)}">📖 열기</button>
+        ${categories.length>1?`<select class="form-select" aria-label="악보 카테고리 변경" data-library-move="${practiceEscape(file.id)}">${categoryOptions}</select>`:''}
+        <button class="score-file-delete" type="button" data-library-delete="${practiceEscape(file.id)}">삭제</button>
+      </div>
+    </article>`;
+  }).join('');
+  const mainContent=selected?`<div class="score-library-panel-head">
+      <h3>${practiceEscape(selected.name)}</h3>
+      <div class="score-library-actions"><button class="btn-ghost" type="button" data-library-action="rename">이름 변경</button><button class="btn-ghost concert-delete" type="button" data-library-action="delete-category">카테고리 삭제</button></div>
+    </div>
+    <div class="score-library-upload">
+      <input class="score-file-input" id="scoreLibraryFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+      <label class="score-file-label" for="scoreLibraryFileInput">＋ 이 카테고리에 악보 올리기</label>
+      <span class="score-file-meta" id="scoreLibraryUploadStatus">PDF·이미지 파일을 선택하면 Supabase에 저장됩니다. (최대 20MB)</span>
+    </div>
+    <div class="score-library-list">${fileRows||'<div class="score-library-empty">이 카테고리에 악보가 없습니다. 파일을 올려 자료를 추가하세요.</div>'}</div>`:
+    `<div class="score-library-empty">${categories.length?'왼쪽에서 카테고리를 선택하세요.':'먼저 자료실 카테고리를 만든 뒤 악보 파일을 올려주세요.'}</div>`;
+  container.innerHTML=`<div class="score-library-topline"><div><h2>악보 자료실</h2><p>카테고리별로 악보 파일을 모아두고, 태블릿에서 바로 열어 연주할 수 있습니다.</p></div><button class="btn-primary" type="button" data-library-action="new-category">＋ 카테고리 만들기</button></div>
+    <div class="score-library-layout"><nav class="score-library-categories" aria-label="악보 카테고리">${categoryButtons}</nav><section class="score-library-panel">${mainContent}</section></div>`;
+  container.querySelectorAll('[data-library-category]').forEach(button=>button.addEventListener('click',()=>{
+    scoreLibrarySelectedCategoryId=button.dataset.libraryCategory; renderScoreLibrary();
+  }));
+  container.querySelector('[data-library-action="new-category"]')?.addEventListener('click',()=>openScoreLibraryCategoryModal());
+  container.querySelector('[data-library-action="rename"]')?.addEventListener('click',()=>openScoreLibraryCategoryModal(selected?.id));
+  container.querySelector('[data-library-action="delete-category"]')?.addEventListener('click',()=>deleteScoreLibraryCategory(selected?.id));
+  const uploadInput=document.getElementById('scoreLibraryFileInput');
+  if(uploadInput)uploadInput.onchange=handleScoreLibraryUpload;
+  container.querySelectorAll('[data-library-open]').forEach(button=>button.addEventListener('click',()=>{
+    const file=library.files.find(item=>item.id===button.dataset.libraryOpen);
+    if(file)openStoredScore(file.path,file.fileName,file.mimeType,file.title);
+  }));
+  container.querySelectorAll('[data-library-delete]').forEach(button=>button.addEventListener('click',()=>deleteScoreLibraryFile(button.dataset.libraryDelete)));
+  container.querySelectorAll('[data-library-move]').forEach(select=>select.addEventListener('change',()=>moveScoreLibraryFile(select.dataset.libraryMove,select.value)));
+}
+
+function openScoreLibraryCategoryModal(categoryId=null) {
+  editingScoreLibraryCategoryId=categoryId;
+  const category=state.scoreLibrary.categories.find(item=>item.id===categoryId);
+  document.getElementById('scoreLibraryCategoryModalTitle').textContent=category?'카테고리 이름 변경':'악보 카테고리 만들기';
+  const input=document.getElementById('scoreLibraryCategoryName');
+  input.value=category?.name||'';
+  document.getElementById('scoreLibraryCategoryModal').classList.add('open');
+  input.focus();
+}
+
+function closeScoreLibraryCategoryModal() {
+  document.getElementById('scoreLibraryCategoryModal').classList.remove('open');
+  editingScoreLibraryCategoryId=null;
+}
+
+function saveScoreLibraryCategory() {
+  const name=document.getElementById('scoreLibraryCategoryName').value.trim();
+  if(!name){showToast('카테고리 이름을 입력해주세요');return;}
+  const duplicate=state.scoreLibrary.categories.some(category=>category.id!==editingScoreLibraryCategoryId&&category.name.toLocaleLowerCase()===name.toLocaleLowerCase());
+  if(duplicate){showToast('같은 이름의 카테고리가 이미 있습니다');return;}
+  if(editingScoreLibraryCategoryId) {
+    const category=state.scoreLibrary.categories.find(item=>item.id===editingScoreLibraryCategoryId);
+    if(category)category.name=name;
+  } else {
+    const category={id:`scorecat_${newScoreObjectId()}`,name,createdAt:new Date().toISOString()};
+    state.scoreLibrary.categories.push(category); scoreLibrarySelectedCategoryId=category.id;
+  }
+  saveAll(); closeScoreLibraryCategoryModal(); renderScoreLibrary(); showToast('카테고리를 저장했습니다');
+}
+
+function deleteScoreLibraryCategory(categoryId) {
+  const category=state.scoreLibrary.categories.find(item=>item.id===categoryId);
+  if(!category)return;
+  if(state.scoreLibrary.files.some(file=>file.categoryId===categoryId)) {
+    showToast('먼저 이 카테고리의 악보를 다른 카테고리로 옮겨주세요'); return;
+  }
+  openConfirm(`<strong>${practiceEscape(category.name)}</strong> 카테고리를 삭제할까요?`,()=>{
+    state.scoreLibrary.categories=state.scoreLibrary.categories.filter(item=>item.id!==categoryId);
+    scoreLibrarySelectedCategoryId='all'; saveAll(); renderScoreLibrary(); showToast('카테고리를 삭제했습니다');
+  });
+}
+
+function moveScoreLibraryFile(fileId,categoryId) {
+  const file=state.scoreLibrary.files.find(item=>item.id===fileId);
+  if(!file||!state.scoreLibrary.categories.some(category=>category.id===categoryId))return;
+  file.categoryId=categoryId; saveAll(); renderScoreLibrary(); showToast('악보를 다른 카테고리로 옮겼습니다');
+}
+
+function handleScoreLibraryUpload(event) {
+  const file=event.target.files?.[0]; event.target.value='';
+  const categoryId=scoreLibrarySelectedCategoryId;
+  if(!file)return;
+  const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
+  if(!allowed.includes(file.type)){showToast('PDF, JPG, PNG, WebP 파일만 올릴 수 있습니다');return;}
+  if(file.size>20*1024*1024){showToast('악보 파일은 20MB 이하만 올릴 수 있습니다');return;}
+  const user=CRepoSupabase.user();
+  if(!user){showToast('악보 자료실에 올리려면 Supabase 계정에 로그인해주세요');return;}
+  const status=document.getElementById('scoreLibraryUploadStatus');
+  if(status)status.textContent='Supabase에 파일을 올리는 중…';
+  return (async()=>{
+    try {
+      const fileName=file.name.normalize('NFC').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(-160)||'score';
+      const path=`${user.id}/library/${newScoreObjectId()}/${fileName}`;
+      await CRepoSupabase.uploadScore(path,file);
+      const title=file.name.replace(/\.[^.]+$/,'').trim()||file.name;
+      state.scoreLibrary.files.push({id:`scorefile_${newScoreObjectId()}`,categoryId,title,fileName:file.name,
+        mimeType:file.type,size:file.size,path,uploadedAt:new Date().toISOString()});
+      saveAll(); renderScoreLibrary(); showToast('악보를 자료실에 저장했습니다');
+    } catch(error) {
+      const message=error.message||'자료실 업로드에 실패했습니다';
+      const currentStatus=document.getElementById('scoreLibraryUploadStatus');
+      if(currentStatus)currentStatus.textContent=message;
+      showToast(message);
+    }
+  })();
+}
+
+function deleteScoreLibraryFile(fileId) {
+  const file=state.scoreLibrary.files.find(item=>item.id===fileId);
+  if(!file)return;
+  openConfirm(`<strong>${practiceEscape(file.title||file.fileName)}</strong> 악보를 자료실에서 삭제할까요?`,async()=>{
+    try {
+      await CRepoSupabase.deleteScore(file.path);
+      state.scoreLibrary.files=state.scoreLibrary.files.filter(item=>item.id!==fileId);
+      saveAll(); renderScoreLibrary(); showToast('자료실 악보를 삭제했습니다');
+    } catch(error) { showToast(error.message||'악보 파일 삭제에 실패했습니다'); }
+  });
 }
 
 function renderTimeline() {
@@ -3645,12 +3881,14 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 /* ══════════════ TAB ══════════════ */
 function switchTab(tab){
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['practice','repertory','concerts','performances'][i]===tab));
+  document.querySelectorAll('.tab-btn').forEach(button=>button.classList.toggle('active',button.dataset.tab===tab));
   document.getElementById('practiceView').classList.toggle('active',tab==='practice');
   document.getElementById('repertoryView').classList.toggle('active',tab==='repertory');
   document.getElementById('concertsView').classList.toggle('active',tab==='concerts');
+  document.getElementById('scoreLibraryView').classList.toggle('active',tab==='scores');
   document.getElementById('performancesView').classList.toggle('active',tab==='performances');
   if(tab==='concerts')renderConcertPlans();
+  if(tab==='scores')renderScoreLibrary();
   if(tab==='performances')renderTimeline();
 }
 
@@ -3658,6 +3896,7 @@ function switchTab(tab){
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('scoreViewer').classList.contains('open'))closeScoreViewer();
+    else if(document.getElementById('scoreLibraryCategoryModal').classList.contains('open'))closeScoreLibraryCategoryModal();
     else if(document.getElementById('confirmOverlay').classList.contains('open'))closeConfirm();
     else if(document.getElementById('setlistPickerModal').classList.contains('open'))closeSetlistPicker();
     else if(document.getElementById('cloudModal').classList.contains('open'))closeCloudModal();
@@ -3773,6 +4012,7 @@ function applyCloudPayload(payload) {
   try {
     categories = payload.categories;
     state = payload.state;
+    ensureScoreLibrary();
     fillDefaultDurations();
     ensureConcertPlans();
     seedPracticeNotes();
