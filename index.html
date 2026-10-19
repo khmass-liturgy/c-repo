@@ -1128,8 +1128,6 @@ body.score-viewer-open { overflow:hidden; }
       </div>
       <div class="header-actions">
         <button class="hdr-btn hdr-btn-ghost" onclick="openAddCatModal()">＋ 카테고리</button>
-        <button class="hdr-btn hdr-btn-ghost" onclick="importJSON()">📂 불러오기</button>
-        <button class="hdr-btn hdr-btn-ghost" onclick="exportJSON()">💾 내보내기</button>
         <button class="hdr-btn hdr-btn-cloud" id="cloudBtn" onclick="openCloudModal()">
           <span class="sync-dot" id="syncDot"></span>
           <span id="cloudBtnLabel">☁ 계정 연결</span>
@@ -1606,7 +1604,6 @@ body.score-viewer-open { overflow:hidden; }
   </div>
 </div>
 
-<input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileImport(event)">
 <div class="score-viewer" id="scoreViewer" aria-label="악보 보기" aria-modal="true" role="dialog">
   <div class="score-viewer-bar">
     <button class="score-viewer-button" type="button" onclick="closeScoreViewer()" aria-label="악보 닫기">✕</button>
@@ -3529,28 +3526,6 @@ function confirmDeleteCat(catId){
 function openConfirm(msg,cb){confirmCallback=cb;document.getElementById('confirmMsg').innerHTML=msg;document.getElementById('confirmOverlay').classList.add('open');}
 function closeConfirm(){confirmCallback=null;document.getElementById('confirmOverlay').classList.remove('open');}
 function execConfirm(){if(confirmCallback)confirmCallback();closeConfirm();}
-
-/* ══════════════ JSON ══════════════ */
-function exportJSON(){
-  const data={version:2,exportedAt:new Date().toISOString(),categories,state};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');
-  a.href=url;a.download=`guitar_repertory_${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(url);
-  showToast('JSON 파일로 내보내기 완료');
-}
-function importJSON(){document.getElementById('fileInput').click();}
-function handleFileImport(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=evt=>{
-    try{
-      const parsed=JSON.parse(evt.target.result);
-      if(parsed.categories&&parsed.state){categories=parsed.categories;state=parsed.state;saveAll();render();showToast('불러오기 완료');}
-      else showToast('올바른 형식의 파일이 아닙니다');
-    }catch(err){showToast('파일 읽기 실패: '+err.message);}
-  };
-  reader.readAsText(file);e.target.value='';
-}
 
 /* ══════════════ CALENDAR PICKER ══════════════ */
 let calYear, calMonth, calSelectedDate = null;
