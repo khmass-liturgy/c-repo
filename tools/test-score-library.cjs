@@ -53,7 +53,7 @@ const context = vm.createContext({
   categories: [], scoreLibrarySelectedCategoryId: 'all', editingScoreLibraryCategoryId: null
 });
 vm.runInContext([
-  'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'saveAll', 'formatScoreFileSize',
+  'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'newScoreObjectPath', 'saveAll', 'formatScoreFileSize',
   'renderScoreLibrary', 'openScoreLibraryCategoryModal', 'closeScoreLibraryCategoryModal',
   'saveScoreLibraryCategory', 'deleteScoreLibraryCategory', 'moveScoreLibraryFile',
   'handleScoreLibraryUpload', 'deleteScoreLibraryFile'
@@ -78,17 +78,21 @@ async function main() {
   run(`openScoreLibraryCategoryModal('${firstCategoryId}'); document.getElementById('scoreLibraryCategoryName').value='바로크'; saveScoreLibraryCategory();`);
   assert.equal(run('state.scoreLibrary.categories[0].name'), '바로크');
 
-  const pdf = { name: 'BWV 1006.pdf', type: 'application/pdf', size: 1024 * 1024 };
+  const pdf = { name: '바흐_무반주_1006.pdf', type: 'application/pdf', size: 1024 * 1024 };
   const event = { target: { files: [pdf], value: 'selected' } };
   run(`scoreLibrarySelectedCategoryId='${firstCategoryId}'`);
   await run('handleScoreLibraryUpload(uploadEvent)', context.uploadEvent = event);
   assert.equal(event.target.value, '', 'File selection resets after upload');
   assert.equal(uploaded.length, 1);
   assert.ok(uploaded[0].path.startsWith('user-123/library/'));
+  assert.ok(!/[가-힣]/u.test(uploaded[0].path), 'Storage paths use ASCII-safe names');
+  assert.ok(uploaded[0].path.endsWith('/score.pdf'));
   assert.equal(run('state.scoreLibrary.files.length'), 1);
   assert.equal(run('state.scoreLibrary.files[0].categoryId'), firstCategoryId);
-  assert.equal(run('state.scoreLibrary.files[0].title'), 'BWV 1006');
-  assert.ok(container.innerHTML.includes('BWV 1006'));
+  assert.equal(run('state.scoreLibrary.files[0].title'), '바흐_무반주_1006');
+  assert.equal(run('state.scoreLibrary.files[0].fileName'), '바흐_무반주_1006.pdf');
+  assert.ok(container.innerHTML.includes('바흐_무반주_1006'));
+  assert.equal(run("newScoreObjectPath('user-123','library','image/jpeg')"), 'user-123/library/uuid-5/score.jpg');
 
   const fileId = run('state.scoreLibrary.files[0].id');
   run(`moveScoreLibraryFile('${fileId}','${secondCategoryId}')`);

@@ -3004,8 +3004,7 @@ function handleScoreLibraryUpload(event) {
   if(status)status.textContent='Supabase에 파일을 올리는 중…';
   return (async()=>{
     try {
-      const fileName=file.name.normalize('NFC').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(-160)||'score';
-      const path=`${user.id}/library/${newScoreObjectId()}/${fileName}`;
+      const path=newScoreObjectPath(user.id,'library',file.type);
       await CRepoSupabase.uploadScore(path,file);
       const title=file.name.replace(/\.[^.]+$/,'').trim()||file.name;
       state.scoreLibrary.files.push({id:`scorefile_${newScoreObjectId()}`,categoryId,title,fileName:file.name,
@@ -3113,6 +3112,12 @@ function newScoreObjectId() {
   return [...bytes].map(value=>value.toString(16).padStart(2,'0')).join('');
 }
 
+function newScoreObjectPath(userId, folder, mimeType) {
+  const extension=({'application/pdf':'pdf','image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[mimeType]||'bin';
+  const id=newScoreObjectId();
+  return `${userId}/${folder?`${folder}/`:''}${id}/score.${extension}`;
+}
+
 function scorePathIsArchived(path) {
   return (state.concertArchives||[]).some(plan=>(plan.pieces||[]).some(item=>
     concertPieceData(item,true).scoreStoragePath===path));
@@ -3130,8 +3135,7 @@ async function handleScoreFileSelection(event) {
   const title=editingPiece, data=getPieceData(title), previousPath=data.scoreStoragePath;
   setScoreEditorState(data,'Supabase에 악보를 올리는 중…');
   try {
-    const cleanName=file.name.normalize('NFC').replace(/[^\p{L}\p{N}._-]+/gu,'_').slice(-160)||'score';
-    const objectPath=`${user.id}/${newScoreObjectId()}/${cleanName}`;
+    const objectPath=newScoreObjectPath(user.id,'',file.type);
     await CRepoSupabase.uploadScore(objectPath,file);
     data.scoreStoragePath=objectPath;
     data.scoreFileName=file.name;
