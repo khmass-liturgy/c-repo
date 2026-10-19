@@ -572,6 +572,9 @@ body.score-viewer-open { overflow:hidden; }
 .perf-timeline.active  { display:block; }
 .repertory-view { display:none; }
 .repertory-view.active { display:block; }
+.repertory-overview { margin:0 0 12px; padding:16px 18px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+.repertory-overview h2 { margin:0; font:600 22px 'Noto Serif KR',serif; color:#1a0f00; }
+.repertory-overview p { margin:5px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
 .concert-view { display:none; }
 .concert-view.active { display:block; }
 .score-library-view { display:none; }
@@ -759,7 +762,7 @@ body.score-viewer-open { overflow:hidden; }
 
   /* ── 화면 전용 요소 숨김 ── */
   body::before, .header-actions, .controls, .tab-bar, .cat-tab-bar,
-  .practice-view, .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn, .memo-icon,
+  .practice-view, .repertory-overview, .practice-banner, .cat-actions, .record-btn, .piece-del-btn, .score-btn, .memo-icon,
   .status-badge, .last-played, .modal-overlay, .confirm-overlay, .toast, .piece-duration,
   .reorder-controls, .drag-handle, .sync-status-text,
   #performancesView { display:none !important; }
@@ -929,6 +932,8 @@ body.score-viewer-open { overflow:hidden; }
   .form-select option { background:#101418; color:var(--cream); }
   .icon-preview, .setlist-check { background:#0d1114; }
   .category-section { background:rgba(14,18,22,.82); border-color:var(--border); border-radius:10px; }
+  .repertory-overview { background:#101418; border-color:var(--border); }
+  .repertory-overview h2 { color:var(--cream); }
   .category-header { background:#11161a; }
   .category-header:hover { background:#171d22; }
   .cat-name, .piece-title, .setlist-item-title { color:#f4eee4; }
@@ -1147,14 +1152,14 @@ body.score-viewer-open { overflow:hidden; }
   </header>
 
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="practice" onclick="switchTab('practice')">오늘의 연습</button>
-    <button class="tab-btn" data-tab="repertory" onclick="switchTab('repertory')">레퍼토리</button>
+    <button class="tab-btn active" data-tab="repertory" onclick="switchTab('repertory')">레퍼토리 관리</button>
+    <button class="tab-btn" data-tab="practice" onclick="switchTab('practice')">오늘의 연습</button>
     <button class="tab-btn" data-tab="concerts" onclick="switchTab('concerts')">연주회 준비</button>
     <button class="tab-btn" data-tab="scores" onclick="switchTab('scores')">악보 자료실</button>
     <button class="tab-btn" data-tab="performances" onclick="switchTab('performances')">공연 이력</button>
   </div>
 
-  <div id="practiceView" class="practice-view active">
+  <div id="practiceView" class="practice-view">
     <div class="practice-lab">
       <section class="practice-hero">
         <div class="eyebrow">Professional practice, made personal</div>
@@ -1330,7 +1335,14 @@ body.score-viewer-open { overflow:hidden; }
     </div>
   </div>
 
-  <div id="repertoryView" class="repertory-view">
+  <div id="repertoryView" class="repertory-view active">
+    <div class="repertory-overview">
+      <div>
+        <div class="panel-kicker">REPERTORY OVERVIEW</div>
+        <h2>레퍼토리 관리</h2>
+        <p>곡의 상태와 연주 정보를 정리하고, 다음에 연습할 곡을 빠르게 찾으세요.</p>
+      </div>
+    </div>
     <!-- 카테고리 탭 바 -->
     <div class="cat-tab-bar" id="catTabBar"></div>
 
