@@ -93,10 +93,15 @@ async function main() {
   assert.equal(run('state.scoreLibrary.files[0].fileName'), '바흐_무반주_1006.pdf');
   assert.ok(container.innerHTML.includes('바흐_무반주_1006'));
   assert.equal(run("newScoreObjectPath('user-123','library','image/jpeg')"), 'user-123/library/uuid-5/score.jpg');
+  run('renderScoreLibrary()');
+  assert.ok(container.innerHTML.includes('카테고리 이동'), 'Each score offers an explicit category move control');
+  assert.ok(container.innerHTML.includes(`value="${secondCategoryId}"`), 'Move control lists other categories');
 
   const fileId = run('state.scoreLibrary.files[0].id');
   run(`moveScoreLibraryFile('${fileId}','${secondCategoryId}')`);
   assert.equal(run('state.scoreLibrary.files[0].categoryId'), secondCategoryId);
+  assert.equal(JSON.parse(stored.get('guitar_repertory_v4')).state.scoreLibrary.files[0].categoryId, secondCategoryId,
+    'Category move is persisted');
 
   run(`deleteScoreLibraryCategory('${secondCategoryId}')`);
   assert.equal(confirmCallback, null, 'Categories with files cannot be deleted');

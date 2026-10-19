@@ -2902,14 +2902,15 @@ function renderScoreLibrary() {
     .sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')));
   const fileRows=visibleFiles.map(file=>{
     const category=categories.find(item=>item.id===file.categoryId);
-    const categoryOptions=categories.map(item=>`<option value="${practiceEscape(item.id)}"${item.id===file.categoryId?' selected':''}>${practiceEscape(item.name)}</option>`).join('');
+    const categoryOptions=categories.filter(item=>item.id!==file.categoryId)
+      .map(item=>`<option value="${practiceEscape(item.id)}">${practiceEscape(item.name)}</option>`).join('');
     const date=file.uploadedAt?new Date(file.uploadedAt).toLocaleDateString('ko-KR'):'날짜 정보 없음';
     return `<article class="score-library-item">
       <div><div class="score-library-item-title">${practiceEscape(file.title||file.fileName||'이름 없는 악보')}</div>
         <div class="score-library-item-meta">${practiceEscape(category?.name||'카테고리 없음')} · ${practiceEscape(file.fileName||'')} · ${formatScoreFileSize(file.size)} · ${practiceEscape(date)}</div></div>
       <div class="score-library-item-actions">
         <button class="score-file-open" type="button" data-library-open="${practiceEscape(file.id)}">📖 열기</button>
-        ${categories.length>1?`<select class="form-select" aria-label="악보 카테고리 변경" data-library-move="${practiceEscape(file.id)}">${categoryOptions}</select>`:''}
+        ${categoryOptions?`<select class="form-select" aria-label="${practiceEscape(file.title||file.fileName||'악보')} 카테고리 이동" data-library-move="${practiceEscape(file.id)}"><option value="" selected disabled>카테고리 이동</option>${categoryOptions}</select>`:''}
         <button class="score-file-delete" type="button" data-library-delete="${practiceEscape(file.id)}">삭제</button>
       </div>
     </article>`;
@@ -2987,7 +2988,7 @@ function deleteScoreLibraryCategory(categoryId) {
 
 function moveScoreLibraryFile(fileId,categoryId) {
   const file=state.scoreLibrary.files.find(item=>item.id===fileId);
-  if(!file||!state.scoreLibrary.categories.some(category=>category.id===categoryId))return;
+  if(!file||file.categoryId===categoryId||!state.scoreLibrary.categories.some(category=>category.id===categoryId))return;
   file.categoryId=categoryId; saveAll(); renderScoreLibrary(); showToast('악보를 다른 카테고리로 옮겼습니다');
 }
 
