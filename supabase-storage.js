@@ -46,14 +46,25 @@
     return { configured: true, user: currentUser };
   }
 
-  async function signIn(email) {
+  async function signInWithPassword(email, password) {
+    const supabaseClient = getClient();
+    if (!supabaseClient) throw new Error('Supabase 프로젝트 설정이 필요합니다.');
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
+  async function resetPassword(email) {
     const supabaseClient = getClient();
     if (!supabaseClient) throw new Error('Supabase 프로젝트 설정이 필요합니다.');
     const redirectTo = root.location.origin + root.location.pathname;
-    const { error } = await supabaseClient.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: true }
-    });
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  }
+
+  async function updatePassword(password) {
+    const supabaseClient = getClient();
+    if (!supabaseClient) throw new Error('Supabase 프로젝트 설정이 필요합니다.');
+    const { error } = await supabaseClient.auth.updateUser({ password });
     if (error) throw error;
   }
 
@@ -122,7 +133,7 @@
   }
 
   root.CRepoSupabase = Object.freeze({
-    configured, init, user, signIn, signOut, load, save,
+    configured, init, user, signInWithPassword, resetPassword, updatePassword, signOut, load, save,
     uploadScore, createScoreUrl, deleteScore, dispose
   });
 })(window);

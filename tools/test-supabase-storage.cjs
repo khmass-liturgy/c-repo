@@ -33,7 +33,9 @@ async function main() {
     auth: {
       getSession: async () => ({ data: { session: { user } }, error: null }),
       onAuthStateChange: callback => { authCallback = callback; return { data: { subscription: { unsubscribe() {} } } }; },
-      signInWithOtp: async options => { calls.push(['otp', options]); return { error: null }; },
+      signInWithPassword: async credentials => { calls.push(['passwordSignIn', credentials]); return { error: null }; },
+      resetPasswordForEmail: async (email, options) => { calls.push(['passwordReset', email, options]); return { error: null }; },
+      updateUser: async attributes => { calls.push(['updateUser', attributes]); return { error: null }; },
       signOut: async options => { calls.push(['signOut', options]); return { error: null }; }
     },
     from(table) {
@@ -72,11 +74,15 @@ async function main() {
   assert.equal(api.user().email, user.email);
   assert.equal((await api.load()).updated_at, remote.updated_at);
 
-  await api.signIn(user.email);
-  const otp = calls.find(call => call[0] === 'otp')[1];
-  assert.equal(otp.email, user.email);
-  assert.equal(otp.options.emailRedirectTo, 'https://khmass-liturgy.github.io/c-repo/');
-  assert.equal(otp.options.shouldCreateUser, true);
+  await api.signInWithPassword(user.email, 'correct-horse-battery');
+  assert.equal(JSON.stringify(calls.find(call => call[0] === 'passwordSignIn')[1]), JSON.stringify({
+    email: user.email, password: 'correct-horse-battery'
+  }));
+  await api.resetPassword(user.email);
+  assert.equal(calls.find(call => call[0] === 'passwordReset')[1], user.email);
+  assert.equal(calls.find(call => call[0] === 'passwordReset')[2].redirectTo, 'https://khmass-liturgy.github.io/c-repo/');
+  await api.updatePassword('new-strong-password');
+  assert.equal(JSON.stringify(calls.find(call => call[0] === 'updateUser')[1]), JSON.stringify({ password: 'new-strong-password' }));
 
   const payload = { categories: [{ id: 'classical' }], state: { pieces: {}, collapsed: {}, concertPlans: [],
     concertArchives: [{ id: 'concert-test', title: '완료된 연주회', completedAt: '2026-10-18T10:30:00Z',

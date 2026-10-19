@@ -1580,16 +1580,24 @@ body.score-viewer-open { overflow:hidden; }
   <div class="modal" style="max-width:440px">
     <div class="modal-title" style="margin-bottom:6px">☁ Supabase 계정 동기화</div>
     <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:18px">
-      이메일로 받은 로그인 링크를 누르면 레퍼토리와 연습 기록이 계정별로 안전하게 저장됩니다.
-      다른 컴퓨터에서도 같은 이메일로 로그인하면 동일한 데이터를 불러옵니다.
+      이메일 주소를 아이디로 사용하고 비밀번호로 로그인합니다.
+      로그인하면 레퍼토리와 연습 기록을 다른 기기에서도 불러올 수 있습니다.
     </p>
 
-    <form id="cloudAuthForm" autocomplete="on" novalidate onsubmit="event.preventDefault(); requestMagicLink();">
-    <div class="form-row">
+    <form id="cloudAuthForm" autocomplete="on" novalidate onsubmit="event.preventDefault(); submitCloudAuth();">
+    <div class="form-row" id="cloudEmailRow">
       <label class="form-label" for="cloudEmail">이메일</label>
-      <input class="form-input" id="cloudEmail" name="email" type="email" autocomplete="email" inputmode="email" required placeholder="로그인 링크를 받을 이메일">
+      <input class="form-input" id="cloudEmail" name="email" type="email" autocomplete="username" inputmode="email" required placeholder="로그인 아이디 (이메일)">
     </div>
-    <p id="cloudAuthStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);line-height:1.7;margin:10px 0">비밀번호나 GitHub 토큰은 필요하지 않습니다.</p>
+    <div class="form-row" id="cloudPasswordRow">
+      <label class="form-label" for="cloudPassword">비밀번호</label>
+      <input class="form-input" id="cloudPassword" name="password" type="password" autocomplete="current-password" required placeholder="비밀번호">
+    </div>
+    <div class="form-row" id="cloudPasswordConfirmRow" style="display:none">
+      <label class="form-label" for="cloudPasswordConfirm">새 비밀번호 확인</label>
+      <input class="form-input" id="cloudPasswordConfirm" name="new-password-confirm" type="password" autocomplete="new-password" placeholder="새 비밀번호를 다시 입력">
+    </div>
+    <p id="cloudAuthStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);line-height:1.7;margin:10px 0">기존 매직링크 계정은 비밀번호 설정/재설정을 한 번 진행해야 합니다.</p>
 
     <div id="cloudInfoBox" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--muted); line-height:1.6;">
       <div>로그인 계정: <strong id="cloudUserEmail" style="color:var(--cream)">-</strong></div>
@@ -1601,7 +1609,8 @@ body.score-viewer-open { overflow:hidden; }
       <div class="footer-right" style="margin-left:auto; flex-wrap:wrap; gap:6px; justify-content:flex-end">
         <button type="button" class="btn-ghost" id="cloudRefreshBtn" style="display:none; font-size:11px" onclick="refreshFromCloud()">⬇ 지금 불러오기</button>
         <button type="button" class="btn-ghost" onclick="closeCloudModal()">닫기</button>
-        <button type="submit" id="cloudSignInBtn" class="btn-primary">로그인 링크 받기</button>
+        <button type="button" class="btn-ghost" id="cloudPasswordResetBtn" onclick="requestPasswordReset()">비밀번호 설정/재설정</button>
+        <button type="submit" id="cloudSignInBtn" class="btn-primary">로그인</button>
       </div>
     </div>
     </form>
@@ -3966,6 +3975,7 @@ let cloudSyncing = false;
 let cloudApplyingRemote = false;
 let cloudUser = null;
 let cloudLoadedUserId = null;
+let cloudPasswordRecoveryMode = false;
 
 function validPracticePayload(payload) {
   return !!(payload && Array.isArray(payload.categories) && payload.state &&
@@ -3999,11 +4009,16 @@ function cloudStatus(message, tone = 'normal') {
 
 function updateCloudModal() {
   const signedIn = !!cloudUser;
-  document.getElementById('cloudInfoBox').style.display = signedIn ? 'block' : 'none';
-  document.getElementById('cloudSignOutBtn').style.display = signedIn ? 'inline-block' : 'none';
-  document.getElementById('cloudRefreshBtn').style.display = signedIn ? 'inline-block' : 'none';
-  document.getElementById('cloudSignInBtn').style.display = signedIn ? 'none' : 'inline-block';
-  document.getElementById('cloudEmail').closest('.form-row').style.display = signedIn ? 'none' : 'block';
+  const recovery=cloudPasswordRecoveryMode;
+  document.getElementById('cloudInfoBox').style.display = signedIn&&!recovery ? 'block' : 'none';
+  document.getElementById('cloudSignOutBtn').style.display = signedIn&&!recovery ? 'inline-block' : 'none';
+  document.getElementById('cloudRefreshBtn').style.display = signedIn&&!recovery ? 'inline-block' : 'none';
+  document.getElementById('cloudSignInBtn').style.display = signedIn&&!recovery ? 'none' : 'inline-block';
+  document.getElementById('cloudEmailRow').style.display = signedIn||recovery ? 'none' : 'block';
+  document.getElementById('cloudPasswordRow').style.display = signedIn&&!recovery ? 'none' : 'block';
+  document.getElementById('cloudPasswordConfirmRow').style.display = recovery ? 'block' : 'none';
+  document.getElementById('cloudPasswordResetBtn').style.display = !signedIn&&!recovery ? 'inline-block' : 'none';
+  document.getElementById('cloudSignInBtn').textContent = recovery ? '새 비밀번호 저장' : '로그인';
   document.getElementById('cloudUserEmail').textContent = cloudUser?.email || '-';
   const lastSync = localStorage.getItem('guitar_supabase_last_sync');
   document.getElementById('cloudLastSync').textContent = lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '-';
@@ -4016,7 +4031,7 @@ function openCloudModal() {
   } else if (cloudUser) {
     cloudStatus('이 계정의 데이터와 자동 동기화 중입니다.', 'success');
   } else {
-    cloudStatus('이메일로 로그인 링크를 보내드립니다. 비밀번호는 필요하지 않습니다.');
+    cloudStatus('이메일 주소와 비밀번호로 로그인하세요.');
   }
   document.getElementById('cloudModal').classList.add('open');
 }
@@ -4025,26 +4040,75 @@ function closeCloudModal() {
   document.getElementById('cloudModal').classList.remove('open');
 }
 
-async function requestMagicLink() {
-  const email = document.getElementById('cloudEmail').value.trim();
-  const button = document.getElementById('cloudSignInBtn');
-  if (!email || !document.getElementById('cloudEmail').checkValidity()) {
+function isValidCloudEmail(email) {
+  const input=document.getElementById('cloudEmail');
+  if (!email || !input.checkValidity()) {
     cloudStatus('올바른 이메일 주소를 입력해주세요.', 'error');
-    document.getElementById('cloudEmail').focus();
+    input.focus();
+    return false;
+  }
+  return true;
+}
+
+function cloudAuthErrorMessage(error, fallback) {
+  const message=String(error?.message||'');
+  if (error?.code==='over_email_send_rate_limit'||/email rate limit exceeded/i.test(message))
+    return '이메일 발송 한도에 도달했습니다. 잠시 후 다시 시도해주세요. 기본 발송기는 시간당 발송 수가 제한됩니다.';
+  return message||fallback;
+}
+
+async function submitCloudAuth() {
+  if(cloudPasswordRecoveryMode) {
+    const password=document.getElementById('cloudPassword').value;
+    const confirm=document.getElementById('cloudPasswordConfirm').value;
+    if(password.length<8) { cloudStatus('비밀번호를 8자 이상 입력해주세요.', 'error'); return; }
+    if(password!==confirm) { cloudStatus('비밀번호가 서로 일치하지 않습니다.', 'error'); return; }
+    const button=document.getElementById('cloudSignInBtn');
+    button.disabled=true; button.textContent='비밀번호 저장 중…';
+    try {
+      await CRepoSupabase.updatePassword(password);
+      cloudPasswordRecoveryMode=false;
+      document.getElementById('cloudPassword').value='';
+      document.getElementById('cloudPasswordConfirm').value='';
+      updateCloudModal();
+      cloudStatus('비밀번호를 설정했습니다. 이제 이메일과 비밀번호로 로그인할 수 있습니다.', 'success');
+      showToast('비밀번호를 설정했습니다');
+    } catch(error) {
+      cloudStatus('비밀번호 저장 실패: '+cloudAuthErrorMessage(error,'설정을 확인해주세요.'), 'error');
+    } finally { button.disabled=false; }
     return;
   }
+
+  const email = document.getElementById('cloudEmail').value.trim();
+  const password = document.getElementById('cloudPassword').value;
+  const button = document.getElementById('cloudSignInBtn');
+  if(!isValidCloudEmail(email))return;
+  if(!password) { cloudStatus('비밀번호를 입력해주세요.', 'error'); document.getElementById('cloudPassword').focus(); return; }
   button.disabled = true;
-  button.textContent = '링크 보내는 중…';
+  button.textContent = '로그인 중…';
   try {
-    await CRepoSupabase.signIn(email);
-    cloudStatus('로그인 링크를 보냈습니다. 이메일에서 링크를 누르면 자동 연결됩니다.', 'success');
-    showToast('로그인 이메일을 확인해주세요');
+    await CRepoSupabase.signInWithPassword(email,password);
+    cloudStatus('로그인되었습니다. 계정 데이터를 불러오는 중입니다.', 'success');
+    showToast('로그인되었습니다');
   } catch (error) {
-    cloudStatus('로그인 링크 전송 실패: ' + (error?.message || 'Supabase 설정을 확인해주세요.'), 'error');
+    cloudStatus('로그인 실패: ' + cloudAuthErrorMessage(error,'이메일 또는 비밀번호를 확인해주세요.'), 'error');
   } finally {
     button.disabled = false;
-    button.textContent = '로그인 링크 받기';
+    button.textContent = '로그인';
   }
+}
+
+async function requestPasswordReset() {
+  const email=document.getElementById('cloudEmail').value.trim();
+  const button=document.getElementById('cloudPasswordResetBtn');
+  if(!isValidCloudEmail(email))return;
+  button.disabled=true; button.textContent='요청 중…';
+  try {
+    await CRepoSupabase.resetPassword(email);
+    cloudStatus('비밀번호 설정 링크를 보냈습니다. 이메일의 링크를 열어 새 비밀번호를 지정해주세요.', 'success');
+  } catch(error) {
+    cloudStatus('재설정 메일 전송 실패: '+cloudAuthErrorMessage(error,'잠시 후 다시 시도해주세요.'), 'error');
+  } finally { button.disabled=false; button.textContent='비밀번호 설정/재설정'; }
 }
 
 async function signOutCloud() {
@@ -4134,6 +4198,11 @@ async function saveToCloud() {
 
 async function handleCloudAuthChange({ event, user }) {
   cloudUser = user || null;
+  if(event==='PASSWORD_RECOVERY') {
+    cloudPasswordRecoveryMode=true;
+    document.getElementById('cloudModal').classList.add('open');
+    cloudStatus('새 비밀번호를 입력해주세요.', 'success');
+  }
   updateCloudModal();
   if (!cloudUser) {
     cloudLoadedUserId = null;
