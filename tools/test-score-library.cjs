@@ -60,6 +60,7 @@ const context = vm.createContext({
   openConfirm: (message, callback) => { confirmCallback = callback; },
   state: { pieces: {}, concertPlans: [], concertArchives: [] }, editingPiece: null,
   categories: [], scoreLibrarySelectedCategoryId: 'all', editingScoreLibraryCategoryId: null,
+  khcgScorePickerMode: false,
   PIECE_PRACTICE_NOTES: {}, DEFAULT_DURATIONS: {}, currentCatTab: 'all',
   getCatById: id => context.categories.find(category => category.id === id),
   closeAddModal() {}, render() {}

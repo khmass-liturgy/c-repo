@@ -1936,6 +1936,10 @@ let performanceTimerRunning=false, performanceTimerElapsedMs=0, performanceTimer
 let scoreWakeLock=null;
 let scoreLibrarySelectedCategoryId='all';
 let editingScoreLibraryCategoryId=null;
+const cRepoUrlParams=new URLSearchParams(location.search);
+const khcgScorePickerMode=cRepoUrlParams.get('picker')==='khcg';
+const requestedScorePath=cRepoUrlParams.get('scorePath')||'';
+let requestedScoreHandled=false;
 
 function ensureScoreLibrary() {
   let changed=false;
@@ -2919,6 +2923,40 @@ function formatScoreFileSize(bytes) {
   return size<1024*1024?`${Math.max(1,Math.round(size/1024))}KB`:`${(size/(1024*1024)).toFixed(1)}MB`;
 }
 
+function stableScoreLibraryLink(file) {
+  const url=new URL(location.origin+location.pathname);
+  url.searchParams.set('scorePath',file.path);
+  return url.href;
+}
+
+function selectScoreForKhcg(file) {
+  const message={type:'c-repo-score-selected',title:file.title||file.fileName||'악보',fileName:file.fileName||'',
+    mimeType:file.mimeType||'',scoreLink:stableScoreLibraryLink(file)};
+  if(window.opener&&!window.opener.closed) {
+    window.opener.postMessage(message,location.origin);
+    showToast('khcg 악보함으로 보냈습니다');
+    setTimeout(()=>window.close(),250);
+  } else {
+    navigator.clipboard?.writeText(message.scoreLink);
+    showToast('악보 링크를 복사했습니다');
+  }
+}
+
+async function openRequestedScore() {
+  if(requestedScoreHandled||!requestedScorePath)return;
+  if(!cloudUser) {
+    openCloudModal();
+    cloudStatus('khcg에서 연결한 악보를 열려면 c-repo 계정으로 로그인해주세요.');
+    return;
+  }
+  ensureScoreLibrary();
+  const file=state.scoreLibrary.files.find(item=>item.path===requestedScorePath);
+  if(!file){showToast('연결된 악보를 자료실에서 찾을 수 없습니다');return;}
+  requestedScoreHandled=true;
+  switchTab('scores');
+  await openStoredScore(file.path,file.fileName,file.mimeType,file.title);
+}
+
 function renderScoreLibrary() {
   const container=document.getElementById('scoreLibraryContainer');
   if(!container)return;
@@ -2942,23 +2980,24 @@ function renderScoreLibrary() {
         <div class="score-library-item-meta">${practiceEscape(category?.name||'카테고리 없음')} · ${practiceEscape(file.fileName||'')} · ${formatScoreFileSize(file.size)} · ${practiceEscape(date)}</div></div>
       <div class="score-library-item-actions">
         <button class="score-file-open" type="button" data-library-open="${practiceEscape(file.id)}">📖 열기</button>
-        ${categoryOptions?`<select class="form-select" aria-label="${practiceEscape(file.title||file.fileName||'악보')} 카테고리 이동" data-library-move="${practiceEscape(file.id)}"><option value="" selected disabled>카테고리 이동</option>${categoryOptions}</select>`:''}
-        <button class="score-file-delete" type="button" data-library-delete="${practiceEscape(file.id)}">삭제</button>
+        ${khcgScorePickerMode?`<button class="btn-primary" type="button" data-library-pick="${practiceEscape(file.id)}">악보함에 선택</button>`:''}
+        ${!khcgScorePickerMode&&categoryOptions?`<select class="form-select" aria-label="${practiceEscape(file.title||file.fileName||'악보')} 카테고리 이동" data-library-move="${practiceEscape(file.id)}"><option value="" selected disabled>카테고리 이동</option>${categoryOptions}</select>`:''}
+        ${khcgScorePickerMode?'':`<button class="score-file-delete" type="button" data-library-delete="${practiceEscape(file.id)}">삭제</button>`}
       </div>
     </article>`;
   }).join('');
   const mainContent=selected?`<div class="score-library-panel-head">
       <h3>${practiceEscape(selected.name)}</h3>
-      <div class="score-library-actions"><button class="btn-ghost" type="button" data-library-action="rename">이름 변경</button><button class="btn-ghost concert-delete" type="button" data-library-action="delete-category">카테고리 삭제</button></div>
+      ${khcgScorePickerMode?'':`<div class="score-library-actions"><button class="btn-ghost" type="button" data-library-action="rename">이름 변경</button><button class="btn-ghost concert-delete" type="button" data-library-action="delete-category">카테고리 삭제</button></div>`}
     </div>
-    <div class="score-library-upload">
+    ${khcgScorePickerMode?'':`<div class="score-library-upload">
       <input class="score-file-input" id="scoreLibraryFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
       <label class="score-file-label" for="scoreLibraryFileInput">＋ 이 카테고리에 악보 올리기 (여러 파일 선택 가능)</label>
       <span class="score-file-meta" id="scoreLibraryUploadStatus">PDF·이미지 파일을 한 번에 여러 개 선택할 수 있습니다. (파일당 최대 20MB)</span>
-    </div>
-    <div class="score-library-list">${fileRows||'<div class="score-library-empty">이 카테고리에 악보가 없습니다. 파일을 올려 자료를 추가하세요.</div>'}</div>`:
+    </div>`}
+    <div class="score-library-list">${fileRows||'<div class="score-library-empty">이 카테고리에 악보가 없습니다.</div>'}</div>`:
     `<div class="score-library-empty">${categories.length?'왼쪽에서 카테고리를 선택하세요.':'먼저 자료실 카테고리를 만든 뒤 악보 파일을 올려주세요.'}</div>`;
-  container.innerHTML=`<div class="score-library-topline"><div><h2>악보 자료실</h2><p>카테고리별로 악보 파일을 모아두고, 태블릿에서 바로 열어 연주할 수 있습니다.</p></div><button class="btn-primary" type="button" data-library-action="new-category">＋ 카테고리 만들기</button></div>
+  container.innerHTML=`<div class="score-library-topline"><div><h2>${khcgScorePickerMode?'khcg 악보함에 가져올 악보 선택':'악보 자료실'}</h2><p>${khcgScorePickerMode?'가져올 악보의 ‘악보함에 선택’ 버튼을 누르세요.':'카테고리별로 악보 파일을 모아두고, 태블릿에서 바로 열어 연주할 수 있습니다.'}</p></div>${khcgScorePickerMode?'':'<button class="btn-primary" type="button" data-library-action="new-category">＋ 카테고리 만들기</button>'}</div>
     <div class="score-library-layout"><nav class="score-library-categories" aria-label="악보 카테고리">${categoryButtons}</nav><section class="score-library-panel">${mainContent}</section></div>`;
   container.querySelectorAll('[data-library-category]').forEach(button=>button.addEventListener('click',()=>{
     scoreLibrarySelectedCategoryId=button.dataset.libraryCategory; renderScoreLibrary();
@@ -2971,6 +3010,10 @@ function renderScoreLibrary() {
   container.querySelectorAll('[data-library-open]').forEach(button=>button.addEventListener('click',()=>{
     const file=library.files.find(item=>item.id===button.dataset.libraryOpen);
     if(file)openStoredScore(file.path,file.fileName,file.mimeType,file.title);
+  }));
+  container.querySelectorAll('[data-library-pick]').forEach(button=>button.addEventListener('click',()=>{
+    const file=library.files.find(item=>item.id===button.dataset.libraryPick);
+    if(file)selectScoreForKhcg(file);
   }));
   container.querySelectorAll('[data-library-delete]').forEach(button=>button.addEventListener('click',()=>deleteScoreLibraryFile(button.dataset.libraryDelete)));
   container.querySelectorAll('[data-library-move]').forEach(select=>select.addEventListener('change',()=>moveScoreLibraryFile(select.dataset.libraryMove,select.value)));
@@ -4234,11 +4277,13 @@ async function handleCloudAuthChange({ event, user }) {
   if (!cloudUser) {
     cloudLoadedUserId = null;
     setSyncStatus('idle', CRepoSupabase.configured() ? '☁ 로그인하면 여러 기기에서 자동 동기화됩니다' : 'Supabase 프로젝트 설정 필요 · 현재는 로컬 저장');
+    if(requestedScorePath)await openRequestedScore();
     return;
   }
   if (cloudLoadedUserId === cloudUser.id && event !== 'USER_UPDATED') return;
   cloudLoadedUserId = cloudUser.id;
   await syncCloudAccount();
+  await openRequestedScore();
 }
 
 async function initializeSupabaseSync() {
@@ -4253,6 +4298,7 @@ async function initializeSupabaseSync() {
 loadAll();
 restoreTunerReference();
 render();
+if(khcgScorePickerMode)switchTab('scores');
 initializeSupabaseSync();
 </script>
 </body>

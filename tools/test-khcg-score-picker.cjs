@@ -1,0 +1,10 @@
+const fs = require('fs');
+const assert = require('assert');
+const html = fs.readFileSync('index.html', 'utf8');
+assert.match(html, /cRepoUrlParams\.get\('picker'\)==='khcg'/);
+assert.match(html, /url\.searchParams\.set\('scorePath',file\.path\)/);
+assert.match(html, /window\.opener\.postMessage\(message,location\.origin\)/);
+assert.match(html, /data-library-pick/);
+assert.match(html, /await openRequestedScore\(\)/);
+for (const match of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)) new Function(match[1]);
+console.log('C_REPO_KHCG_PICKER_TEST_OK');
