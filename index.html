@@ -1920,8 +1920,11 @@ function ensureConcertPlans() {
       const rawDuration=typeof entry==='object' ? entry.commentDuration : null;
       const commentDuration=typeof rawDuration==='number' ? Math.max(0,Math.round(rawDuration)) : parseDurationInput(String(rawDuration||''));
       const item={title,comment,commentDuration:commentDuration??null};
+      if (typeof entry==='object' && typeof entry.duration==='number' && Number.isFinite(entry.duration))
+        item.duration=Math.max(0,Math.round(entry.duration));
       if (savedPiece) item.savedPiece=savedPiece;
-      if (typeof entry==='string' || entry.comment!==comment || entry.commentDuration!==item.commentDuration) changed=true;
+      if (typeof entry==='string' || entry.comment!==comment || entry.commentDuration!==item.commentDuration ||
+          (typeof entry==='object' && entry.duration!==item.duration)) changed=true;
       items.push(item);
       return items;
     },[]);
@@ -2785,7 +2788,8 @@ function concertSourcePieces() {
 }
 function concertPieceData(item, archived=false) {
   if (archived) return item.savedPiece||{};
-  return state.pieces?.[item.title]||item.savedPiece||{};
+  const repertoireData=state.pieces?.[item.title]||item.savedPiece||{};
+  return item.duration!=null ? {...repertoireData,duration:item.duration} : repertoireData;
 }
 function concertMusicDuration(plan) {
   return plan.pieces.reduce((total,item)=>total+(concertPieceData(item,!!plan.completedAt).duration||0),0);
@@ -2819,7 +2823,8 @@ function addConcertPiece(id) {
   const title=select?.value;
   if (!plan || !title) { showToast('레퍼토리에서 곡을 선택해주세요'); return; }
   if (plan.pieces.some(item=>item.title===title)) { showToast('이미 프로그램에 있는 곡입니다'); return; }
-  plan.pieces.push({title,comment:'',commentDuration:null}); saveAll(); renderConcertPlans();
+  const duration=state.pieces?.[title]?.duration??null;
+  plan.pieces.push({title,duration,comment:'',commentDuration:null}); saveAll(); renderConcertPlans();
 }
 function updateConcertPieceComment(id,index,value) {
   const plan=getConcertPlan(id), item=plan?.pieces[index];

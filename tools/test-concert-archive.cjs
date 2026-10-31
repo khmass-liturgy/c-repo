@@ -15,14 +15,14 @@ const container = { innerHTML: '', querySelectorAll: () => [] };
 const storage = new Map();
 let scheduled = 0;
 const context = vm.createContext({
-  console, document: { getElementById: id => id === 'concertPlansContainer' ? container : null },
+  console, document: { getElementById: id => id === 'concertPlansContainer' ? container : id === 'concertPiecePick_auto' ? { value: '첫 곡' } : null },
   localStorage: { setItem: (key, value) => storage.set(key, value), getItem: key => storage.get(key) },
   scheduleCloudSave: () => scheduled++, showToast() {}, render() {}, fillDefaultDurations() {}, seedPracticeNotes() {}
 });
 vm.runInContext(`let state, categories, cloudApplyingRemote=false;\n` + [
   'ensureScoreLibrary', 'ensureConcertPlans', 'getPieceMeta', 'practiceEscape', 'parseDurationInput', 'formatDuration',
   'saveAll', 'loadAll', 'safeExternalUrl', 'validPracticePayload', 'applyCloudPayload', 'deletePiece',
-  'newConcertPlan', 'getConcertPlan', 'concertSourcePieces', 'concertPieceData', 'concertMusicDuration',
+  'newConcertPlan', 'getConcertPlan', 'concertSourcePieces', 'concertPieceData', 'concertMusicDuration', 'addConcertPiece',
   'concertCommentDuration', 'concertDuration', 'formatConcertDate', 'concertTimeSummary',
   'archiveConcertPlan', 'copyArchivedConcert', 'renderConcertArchives', 'renderConcertPlans', 'scorePathIsArchived'
 ].map(source).join('\n'), context);
@@ -41,6 +41,18 @@ run("archiveConcertPlan('old'); archiveConcertPlan('old');");
 assert.equal(run('state.concertPlans.length'), 0);
 assert.equal(run('state.concertArchives.length'), 1, 'Repeated click cannot duplicate archive');
 assert.equal(scheduled, 1, 'Archive schedules existing cloud save');
+run("state.concertPlans.push({id:'auto',title:'시간 확인',pieces:[]}); addConcertPiece('auto');");
+assert.equal(run("state.concertPlans.find(plan=>plan.id==='auto').pieces[0].duration"), 180,
+  'Adding a repertoire piece copies its saved duration into the concert item');
+assert.equal(run("concertMusicDuration(state.concertPlans.find(plan=>plan.id==='auto'))"), 180,
+  'Concert total includes the copied repertoire duration');
+run("state.pieces['첫 곡'].duration=300;");
+assert.equal(run("concertMusicDuration(state.concertPlans.find(plan=>plan.id==='auto'))"), 180,
+  'An existing concert item keeps the duration copied when it was added');
+run("ensureConcertPlans();");
+assert.equal(run("state.concertPlans.find(plan=>plan.id==='auto').pieces[0].duration"), 180,
+  'Concert duration snapshots survive plan normalization');
+run("state.concertPlans=state.concertPlans.filter(plan=>plan.id!=='auto');");
 const archived = JSON.parse(run('JSON.stringify(state.concertArchives[0])'));
 assert.equal(archived.pieces[0].savedPiece.memo, '곡 설명\n둘째 줄');
 assert.equal(archived.pieces[0].savedPiece.scoreLink, 'https://example.com/score.pdf');
