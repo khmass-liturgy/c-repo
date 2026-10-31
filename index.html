@@ -1623,6 +1623,15 @@ html.score-request-loading .direct-score-loading { display:flex; }
       <div style="margin-top:3px">마지막 동기화: <span id="cloudLastSync">-</span></div>
     </div>
 
+    <div id="cloudBackupBox" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--muted); line-height:1.6;">
+      <div style="color:var(--gold)">이 기기 자동 백업</div>
+      <div style="margin:3px 0 8px">계정과 합치기 전·다른 계정으로 바꾸기 전에 이 기기의 데이터를 자동으로 보관합니다.</div>
+      <select class="form-select" id="cloudBackupSelect" aria-label="복원할 백업" style="width:100%; font-size:12px"></select>
+      <div style="text-align:right; margin-top:6px">
+        <button type="button" class="btn-ghost" style="font-size:11px" onclick="restoreLocalBackup()">선택한 백업으로 복원</button>
+      </div>
+    </div>
+
     <div class="modal-footer" style="margin-top:8px">
       <button type="button" class="btn-danger" id="cloudSignOutBtn" style="display:none" onclick="signOutCloud()">로그아웃</button>
       <div class="footer-right" style="margin-left:auto; flex-wrap:wrap; gap:6px; justify-content:flex-end">
@@ -1637,7 +1646,7 @@ html.score-request-loading .direct-score-loading { display:flex; }
     <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); line-height:1.7">
       <strong style="color:var(--gold); font-weight:400">데이터 보호</strong><br>
       각 계정은 데이터베이스 정책(RLS)에 의해 자신의 데이터만 읽고 수정할 수 있습니다.
-      로그인 전에는 이 기기의 로컬 데이터가 유지되고, 처음 로그인할 때 계정 저장소로 옮겨집니다.
+      로그인 전에 입력한 내용은 이 기기에 보관되고, 로그인하면 계정 데이터를 덮어쓰지 않고 합쳐서 저장됩니다.
     </div>
   </div>
 </div>
@@ -1648,7 +1657,7 @@ html.score-request-loading .direct-score-loading { display:flex; }
     <div class="confirm-msg" id="confirmMsg"></div>
     <div class="confirm-btns">
       <button class="btn-ghost" onclick="closeConfirm()">취소</button>
-      <button class="btn-danger" style="opacity:1" onclick="execConfirm()">삭제</button>
+      <button class="btn-danger" id="confirmOkBtn" style="opacity:1" onclick="execConfirm()">삭제</button>
     </div>
   </div>
 </div>
@@ -1988,11 +1997,13 @@ function loadAll() {
     state.pieces[p.title]={status:'암보',performances:[],memo:PIECE_PRACTICE_NOTES[p.title]||'',lastPlayed:null,duration:null};
   }));
   fillDefaultDurations();
+  markLocalDirty(false); // 저장된 데이터가 없는 새 기기: 서버에 올릴 변경이 없다
 }
 
 function saveAll() {
   ensureScoreLibrary();
   try { localStorage.setItem('guitar_repertory_v4',JSON.stringify({categories,state})); } catch(e){}
+  markLocalDirty(); // 로그인 전이거나 저장이 실패해도 다음 로그인 때 서버 데이터와 합쳐지도록 표시
   scheduleCloudSave(); // 로그인 상태에서는 Supabase에 자동 저장 (디바운스)
 }
 
@@ -3687,7 +3698,7 @@ function confirmDeleteCat(catId){
 }
 
 /* ══════════════ CONFIRM ══════════════ */
-function openConfirm(msg,cb){confirmCallback=cb;document.getElementById('confirmMsg').innerHTML=msg;document.getElementById('confirmOverlay').classList.add('open');}
+function openConfirm(msg,cb,okLabel='삭제'){confirmCallback=cb;document.getElementById('confirmMsg').innerHTML=msg;document.getElementById('confirmOkBtn').textContent=okLabel;document.getElementById('confirmOverlay').classList.add('open');}
 function closeConfirm(){confirmCallback=null;document.getElementById('confirmOverlay').classList.remove('open');}
 function execConfirm(){if(confirmCallback)confirmCallback();closeConfirm();}
 
@@ -4061,11 +4072,110 @@ let cloudSyncing = false;
 let cloudApplyingRemote = false;
 let cloudUser = null;
 let cloudLoadedUserId = null;
+let cloudReadyUserId = null; // 서버 데이터를 확인(병합)한 계정. 이 전에는 서버를 덮어쓰지 않는다
 let cloudPasswordRecoveryMode = false;
 
 function validPracticePayload(payload) {
   return !!(payload && Array.isArray(payload.categories) && payload.state &&
     typeof payload.state === 'object' && payload.state.pieces && typeof payload.state.pieces === 'object');
+}
+
+/* ══════════════ 로그인 전 입력 보호 ══════════════
+   로컬에는 서버에 없는 변경이 있을 수 있다(로그아웃 상태에서 입력, 저장 실패 등).
+   로그인할 때 서버 데이터로 덮어쓰지 않고, 마지막으로 서버와 같았던 사본(base)을
+   기준으로 이 기기의 변경과 서버의 변경을 3-way 병합한다.
+   guitar_local_dirty: '1' 서버에 없는 변경 있음 · '0' 없음 · 없음(이전 버전 사본)은 있는 것으로 취급
+   guitar_supabase_base: 마지막으로 서버와 같았던 데이터 · guitar_supabase_owner: 그 계정 */
+function syncStoreGet(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+function syncStoreSet(key,value) { try { if (value===null) localStorage.removeItem(key); else localStorage.setItem(key,value); return true; } catch(e) { return false; } }
+function markLocalDirty(dirty=true) { syncStoreSet('guitar_local_dirty',dirty?'1':'0'); }
+function localMayHaveUnsyncedChanges() { return syncStoreGet('guitar_local_dirty')!=='0'; }
+function cloudSnapshot() { return JSON.stringify({ categories, state }); }
+function readSyncBase() {
+  try {
+    const base=JSON.parse(syncStoreGet('guitar_supabase_base')||'null');
+    return validPracticePayload(base) ? base : undefined;
+  } catch(e) { return undefined; }
+}
+function markCloudSynced(userId, baseJson, localJson) {
+  if (!syncStoreSet('guitar_supabase_base',baseJson)) syncStoreSet('guitar_supabase_base',null);
+  syncStoreSet('guitar_supabase_owner',userId);
+  if (cloudSnapshot()===localJson) markLocalDirty(false); // 저장하는 동안 새로 입력한 내용은 계속 미반영으로 남긴다
+}
+
+function syncEqual(a, b) {
+  if (a===b) return true;
+  if (!a || !b || typeof a!=='object' || typeof b!=='object' || Array.isArray(a)!==Array.isArray(b)) return false;
+  const keys=Object.keys(a);
+  return keys.length===Object.keys(b).length && keys.every(key=>Object.prototype.hasOwnProperty.call(b,key) && syncEqual(a[key],b[key]));
+}
+function isSyncObject(value) { return !!value && typeof value==='object' && !Array.isArray(value); }
+function syncItemKeys(list) {
+  const items=new Map(), seen=new Map();
+  list.forEach(item=>{
+    const named=isSyncObject(item) ? (typeof item.id==='string' ? 'id:'+item.id : typeof item.title==='string' ? 'title:'+item.title : null) : null;
+    const key=named||'json:'+JSON.stringify(item); // id·title가 없는 항목(공연 이력 등)은 내용 자체가 식별자
+    const count=seen.get(key)||0;
+    seen.set(key,count+1);
+    items.set(count ? `${key}#${count}` : key, item);
+  });
+  return items;
+}
+function mergeSyncArray(base, local, remote) {
+  const baseItems=syncItemKeys(Array.isArray(base) ? base : []), localItems=syncItemKeys(local), remoteItems=syncItemKeys(remote);
+  const keys=[...localItems.keys(), ...[...remoteItems.keys()].filter(key=>!localItems.has(key))];
+  return keys.map(key=>mergeSyncValue(baseItems.get(key),localItems.get(key),remoteItems.get(key))).filter(item=>item!==undefined);
+}
+/* base: 마지막 동기화 사본(없으면 undefined). 한쪽만 바뀐 부분은 바뀐 쪽을 따르고, 한쪽에서만
+   추가된 항목은 유지한다. 양쪽이 같은 값을 다르게 바꾼 경우에만 이 기기 값을 쓰고, 한쪽이 삭제하고
+   다른 쪽이 수정한 항목은 수정본을 살린다. 어느 쪽도 합치기 전 원본은 백업에 남는다. */
+function mergeSyncValue(base, local, remote) {
+  if (syncEqual(local,remote)) return local;
+  if (syncEqual(local,base)) return remote;
+  if (syncEqual(remote,base)) return local;
+  if (local===undefined) return remote;
+  if (remote===undefined) return local;
+  if (isSyncObject(local) && isSyncObject(remote)) {
+    const merged={};
+    [...Object.keys(local), ...Object.keys(remote).filter(key=>!(key in local))].forEach(key=>{
+      const value=mergeSyncValue(isSyncObject(base) ? base[key] : undefined, local[key], remote[key]);
+      if (value!==undefined) merged[key]=value;
+    });
+    return merged;
+  }
+  if (Array.isArray(local) && Array.isArray(remote)) return mergeSyncArray(base,local,remote);
+  return local;
+}
+
+function listLocalBackups() {
+  try {
+    const list=JSON.parse(syncStoreGet('guitar_repertory_backups')||'[]');
+    return Array.isArray(list) ? list.filter(item=>item && typeof item.at==='string' && validPracticePayload(item.payload)) : [];
+  } catch(e) { return []; }
+}
+function backupLocalData(reason, payload=null) {
+  const entry={at:new Date().toISOString(), reason, payload:payload||{categories,state}};
+  const existing=listLocalBackups();
+  if (existing.some(item=>item.reason===reason && syncEqual(item.payload,entry.payload))) return;
+  const list=[entry, ...existing].slice(0,6);
+  while (list.length && !syncStoreSet('guitar_repertory_backups',JSON.stringify(list))) list.pop(); // 저장 공간이 모자라면 오래된 백업부터 버린다
+}
+
+/* 서버 데이터(remotePayload)를 이 기기에 어떻게 반영할지 결정한다.
+   same: 같음 · adopt: 서버 데이터를 받음 · merge: 이 기기 변경과 합친 뒤 서버에도 올림 */
+function planCloudSync(remotePayload, userId) {
+  if (!validPracticePayload(remotePayload)) throw new Error('저장된 데이터 형식이 올바르지 않습니다.');
+  const local={categories,state};
+  if (syncEqual(local,remotePayload)) return {action:'same',payload:remotePayload,backups:[]};
+  const owner=syncStoreGet('guitar_supabase_owner');
+  const foreign=!!owner && owner!==userId; // 다른 계정에서 쓰던 사본은 이 계정에 합치지 않는다
+  const unsynced=localMayHaveUnsyncedChanges();
+  if (!unsynced || foreign) {
+    return {action:'adopt',payload:remotePayload,backups:unsynced ? [['before-account-switch',local]] : []};
+  }
+  const merged=mergeSyncValue(readSyncBase(),local,remotePayload);
+  if (!validPracticePayload(merged)) throw new Error('합친 데이터 형식이 올바르지 않습니다.');
+  return {action:'merge',payload:merged,backups:[['remote-before-merge',remotePayload],['before-merge',local]]}; // 나중에 저장한 것이 목록 맨 위(기본 선택)
 }
 
 function setSyncStatus(status, msg) {
@@ -4108,6 +4218,34 @@ function updateCloudModal() {
   document.getElementById('cloudUserEmail').textContent = cloudUser?.email || '-';
   const lastSync = localStorage.getItem('guitar_supabase_last_sync');
   document.getElementById('cloudLastSync').textContent = lastSync ? new Date(lastSync).toLocaleString('ko-KR') : '-';
+  renderCloudBackups();
+}
+
+function backupLabel(item) {
+  const reasons={'before-merge':'합치기 전 이 기기 데이터','remote-before-merge':'합치기 전 계정 데이터','before-account-switch':'계정 변경 전 이 기기 데이터','before-restore':'복원 직전 데이터'};
+  const data=item.payload.state;
+  const when=new Date(item.at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'});
+  return `${reasons[item.reason]||'자동 백업'} · ${when} · 연주회 ${(data.concertPlans||[]).length}개`;
+}
+
+function renderCloudBackups() {
+  const box=document.getElementById('cloudBackupBox'), select=document.getElementById('cloudBackupSelect');
+  if (!box || !select) return;
+  const backups=listLocalBackups();
+  box.style.display=backups.length ? 'block' : 'none';
+  select.innerHTML=backups.map(item=>`<option value="${practiceEscape(item.at)}">${practiceEscape(backupLabel(item))}</option>`).join('');
+}
+
+function restoreLocalBackup() {
+  const entry=listLocalBackups().find(item=>item.at===document.getElementById('cloudBackupSelect')?.value);
+  if (!entry) { showToast('복원할 백업을 선택해주세요'); return; }
+  closeCloudModal();
+  openConfirm(`<strong>${practiceEscape(backupLabel(entry))}</strong><br>이 백업으로 복원하시겠어요? 지금 데이터는 복원 전에 백업으로 따로 보관됩니다.`,()=>{
+    backupLocalData('before-restore');
+    applyCloudPayload(JSON.parse(JSON.stringify(entry.payload)));
+    saveAll(); // 서버에 없는 변경으로 표시하고, 로그인 상태면 자동 저장
+    showToast('백업에서 복원했습니다');
+  },'복원');
 }
 
 function openCloudModal() {
@@ -4203,6 +4341,7 @@ async function signOutCloud() {
     await CRepoSupabase.signOut();
     cloudUser = null;
     cloudLoadedUserId = null;
+    cloudReadyUserId = null;
     updateCloudModal();
     setSyncStatus('idle', '로그아웃됨 · 이 기기의 로컬 데이터는 유지됩니다');
     showToast('로그아웃되었습니다');
@@ -4228,18 +4367,39 @@ function applyCloudPayload(payload) {
   }
 }
 
+async function pushLocalToCloud(userId) {
+  const sent = cloudSnapshot(); // 저장하는 동안 입력이 바뀌어도 보낸 내용과 기록(base)이 어긋나지 않게 고정
+  const result = await CRepoSupabase.save(JSON.parse(sent));
+  if (!result) throw new Error('저장하지 못했습니다. 로그인 상태를 확인해주세요.');
+  markCloudSynced(userId, sent, sent);
+  return result;
+}
+
 async function syncCloudAccount() {
   if (!cloudUser || cloudSyncing) return;
   cloudSyncing = true;
   setSyncStatus('syncing', 'Supabase에서 데이터를 확인하는 중...');
   try {
+    const userId = cloudUser.id;
     const remote = await CRepoSupabase.load();
-    if (remote?.payload) {
-      applyCloudPayload(remote.payload);
+    if (!cloudUser || cloudUser.id !== userId) return; // 불러오는 사이 로그아웃하거나 계정이 바뀜
+    let timestamp = remote?.updated_at || new Date().toISOString();
+    if (!remote?.payload) {
+      timestamp = (await pushLocalToCloud(userId)).updated_at || timestamp;
     } else {
-      await CRepoSupabase.save({ categories, state });
+      // 로그인 전에 입력한 내용이 서버 데이터에 덮여 사라지지 않도록 결정은 planCloudSync에서 한다.
+      // 입력은 불러오는 동안에도 계속될 수 있으므로 반드시 load() 이후에 판단한다.
+      const plan = planCloudSync(remote.payload, userId);
+      plan.backups.forEach(([reason, payload]) => backupLocalData(reason, payload));
+      if (plan.action !== 'same' && !syncEqual(plan.payload, { categories, state })) applyCloudPayload(plan.payload);
+      if (plan.action === 'merge') {
+        timestamp = (await pushLocalToCloud(userId)).updated_at || timestamp;
+        showToast('이 기기에서 입력한 내용을 계정 데이터와 합쳤습니다');
+      } else {
+        markCloudSynced(userId, JSON.stringify(remote.payload), cloudSnapshot());
+      }
     }
-    const timestamp = remote?.updated_at || new Date().toISOString();
+    cloudReadyUserId = userId;
     localStorage.setItem('guitar_supabase_last_sync', timestamp);
     setSyncStatus('synced', '✓ 계정과 동기화됨 · ' + new Date(timestamp).toLocaleTimeString('ko-KR'));
     updateCloudModal();
@@ -4266,11 +4426,13 @@ function scheduleCloudSave() {
 }
 
 async function saveToCloud() {
-  if (!cloudUser || cloudSyncing || cloudApplyingRemote) return;
+  if (!cloudUser || cloudApplyingRemote) return;
+  if (cloudSyncing) { scheduleCloudSave(); return; } // 진행 중인 동기화가 끝난 뒤 다시 저장
+  if (cloudReadyUserId !== cloudUser.id) { await syncCloudAccount(); return; } // 서버 데이터를 확인·병합하기 전에는 서버를 덮어쓰지 않는다
   cloudSyncing = true;
   setSyncStatus('syncing', 'Supabase에 저장 중...');
   try {
-    const result = await CRepoSupabase.save({ categories, state });
+    const result = await pushLocalToCloud(cloudUser.id);
     const timestamp = result?.updated_at || new Date().toISOString();
     localStorage.setItem('guitar_supabase_last_sync', timestamp);
     setSyncStatus('synced', '✓ 마지막 동기화: ' + new Date(timestamp).toLocaleTimeString('ko-KR'));
@@ -4292,6 +4454,7 @@ async function handleCloudAuthChange({ event, user }) {
   updateCloudModal();
   if (!cloudUser) {
     cloudLoadedUserId = null;
+    cloudReadyUserId = null;
     setSyncStatus('idle', CRepoSupabase.configured() ? '☁ 로그인하면 여러 기기에서 자동 동기화됩니다' : 'Supabase 프로젝트 설정 필요 · 현재는 로컬 저장');
     if(requestedScorePath)await openRequestedScore();
     return;

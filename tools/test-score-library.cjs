@@ -66,7 +66,7 @@ const context = vm.createContext({
   closeAddModal() {}, render() {}
 });
 vm.runInContext([
-  'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'newScoreObjectPath', 'saveAll', 'formatScoreFileSize',
+  'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'newScoreObjectPath', 'syncStoreSet', 'markLocalDirty', 'saveAll', 'formatScoreFileSize',
   'renderScoreLibrary', 'openScoreLibraryCategoryModal', 'closeScoreLibraryCategoryModal',
   'saveScoreLibraryCategory', 'deleteScoreLibraryCategory', 'moveScoreLibraryFile',
   'handleScoreLibraryUpload', 'deleteScoreLibraryFile', 'getPieceData', 'setScoreEditorState',

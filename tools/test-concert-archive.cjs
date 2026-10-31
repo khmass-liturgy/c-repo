@@ -21,7 +21,7 @@ const context = vm.createContext({
 });
 vm.runInContext(`let state, categories, cloudApplyingRemote=false;\n` + [
   'ensureScoreLibrary', 'ensureConcertPlans', 'getPieceMeta', 'practiceEscape', 'parseDurationInput', 'formatDuration',
-  'saveAll', 'loadAll', 'safeExternalUrl', 'validPracticePayload', 'applyCloudPayload', 'deletePiece',
+  'syncStoreGet', 'syncStoreSet', 'markLocalDirty', 'saveAll', 'loadAll', 'safeExternalUrl', 'validPracticePayload', 'applyCloudPayload', 'deletePiece',
   'newConcertPlan', 'getConcertPlan', 'concertSourcePieces', 'concertPieceData', 'concertMusicDuration',
   'concertCommentDuration', 'concertDuration', 'formatConcertDate', 'concertTimeSummary',
   'archiveConcertPlan', 'copyArchivedConcert', 'renderConcertArchives', 'renderConcertPlans', 'scorePathIsArchived'
