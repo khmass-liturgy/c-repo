@@ -68,7 +68,7 @@ const context = vm.createContext({
 vm.runInContext([
   'practiceEscape', 'ensureScoreLibrary', 'newScoreObjectId', 'newScoreObjectPath', 'saveAll', 'formatScoreFileSize',
   'renderScoreLibrary', 'openScoreLibraryCategoryModal', 'closeScoreLibraryCategoryModal',
-  'saveScoreLibraryCategory', 'deleteScoreLibraryCategory', 'moveScoreLibraryFile',
+  'saveScoreLibraryCategory', 'toggleScoreLibraryKhcgPublic', 'deleteScoreLibraryCategory', 'moveScoreLibraryFile',
   'handleScoreLibraryUpload', 'deleteScoreLibraryFile', 'getPieceData', 'setScoreEditorState',
   'populateScoreLibraryPicker', 'scorePathIsArchived', 'scorePathIsReferenced',
   'attachLibraryScoreToPiece', 'removeEditingScore', 'populateNewPieceScorePicker', 'saveNewPiece'
@@ -78,10 +78,16 @@ const run = code => vm.runInContext(code, context);
 async function main() {
   assert.equal(run('ensureScoreLibrary()'), true, 'Old records receive an empty library');
   assert.equal(run('state.scoreLibrary.files.length'), 0);
+  run("state.scoreLibrary.categories.push({id:'legacy',name:'기존 카테고리'}); ensureScoreLibrary();");
+  assert.equal(run("state.scoreLibrary.categories[0].khcgPublic"), true, 'Existing categories become available to KHCG on migration');
+  run("state.scoreLibrary.categories=[];");
 
   run("openScoreLibraryCategoryModal(); document.getElementById('scoreLibraryCategoryName').value='바흐'; saveScoreLibraryCategory();");
   assert.equal(run('state.scoreLibrary.categories.length'), 1);
   const firstCategoryId = run('state.scoreLibrary.categories[0].id');
+  assert.equal(run('state.scoreLibrary.categories[0].khcgPublic'), false, 'New categories start private to KHCG');
+  run(`toggleScoreLibraryKhcgPublic('${firstCategoryId}')`);
+  assert.equal(run('state.scoreLibrary.categories[0].khcgPublic'), true);
   assert.equal(run('scoreLibrarySelectedCategoryId'), firstCategoryId);
 
   run("document.getElementById('scoreLibraryCategoryName').value='바흐'; saveScoreLibraryCategory();");
@@ -129,6 +135,14 @@ async function main() {
 
   run(`moveScoreLibraryFile('${fileId}','${secondCategoryId}')`);
   assert.equal(run('state.scoreLibrary.files[0].categoryId'), secondCategoryId);
+  run("khcgScorePickerMode=true; scoreLibrarySelectedCategoryId='all'; renderScoreLibrary();");
+  assert.ok(!container.innerHTML.includes('바흐_무반주_1006.pdf'), 'KHCG picker hides files in private categories');
+  run(`toggleScoreLibraryKhcgPublic('${secondCategoryId}')`);
+  assert.equal(run(`state.scoreLibrary.categories.find(item=>item.id==='${secondCategoryId}').khcgPublic`), true);
+  run(`scoreLibrarySelectedCategoryId='${secondCategoryId}'; renderScoreLibrary();`);
+  assert.ok(container.innerHTML.includes('바흐_무반주_1006.pdf'), 'KHCG picker shows files after their category is public');
+  assert.ok(container.innerHTML.includes('data-library-pick'), 'Public score can be selected from the KHCG picker');
+  run("khcgScorePickerMode=false; scoreLibrarySelectedCategoryId='all'; renderScoreLibrary();");
   assert.equal(JSON.parse(stored.get('guitar_repertory_v4')).state.scoreLibrary.files[0].categoryId, secondCategoryId,
     'Category move is persisted');
 
