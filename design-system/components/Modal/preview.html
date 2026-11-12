@@ -1,0 +1,35 @@
+<!-- @dsCard group="Overlays" height=640 -->
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>Modal — static preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap">
+</head>
+<body>
+<div class="modal-overlay open" style="position:relative;min-height:600px;align-items:flex-start;gap:20px;flex-wrap:wrap">
+  <div class="modal" role="dialog" aria-label="곡 정보">
+    <div class="modal-title">알함브라 궁전의 추억</div>
+    <div class="modal-section">
+      <span class="modal-label">연주 완성도</span>
+      <div class="status-options">
+        <button class="status-opt">암보</button>
+        <button class="status-opt">연습중</button>
+        <button class="status-opt sel-완성">완성</button>
+        <button class="status-opt">공연가능</button>
+      </div>
+    </div>
+    <div class="modal-section">
+      <span class="modal-label">곡 설명 · 주의 포인트 · 메모</span>
+      <textarea class="memo-input" id="m-memo" rows="3" aria-label="메모">트레몰로는 60 BPM에서 고르게. 왼손 이동 전에 미리 준비.</textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger">삭제</button>
+      <div class="footer-right"><button class="btn-ghost">취소</button><button class="btn-primary">저장</button></div>
+    </div>
+  </div>
+  <div class="confirm-box" role="alertdialog" aria-label="삭제 확인">
+    <div class="confirm-msg"><strong>라그리마</strong> 곡을 삭제할까요?</div>
+    <div class="confirm-btns"><button class="btn-ghost">취소</button><button class="btn-danger">삭제</button></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!-- @dsCard group="Practice" height=470 -->
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>PracticePanel — static preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap">
+</head>
+<body>
+<div class="ds-pad" style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(240px,.75fr);gap:var(--space-18);align-items:start">
+  <section class="practice-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-kicker">Today</div>
+        <div class="panel-title">오늘의 연습 순서</div>
+        <div class="panel-note">30분 · 집중곡 1곡, 유지곡 2곡</div>
+      </div>
+    </div>
+    <div class="progress-shell"><div class="progress-bar" style="width:33%"></div></div>
+    <div class="practice-steps">
+      <div class="practice-step done">
+        <div class="step-time">5<small>MIN</small></div>
+        <div><div class="step-title">워밍업</div><div class="step-detail">개방현 아르페지오와 느린 음계</div></div>
+        <button class="step-check" aria-label="완료">✓</button>
+      </div>
+      <div class="practice-step">
+        <div class="step-time">15<small>MIN</small></div>
+        <div><div class="step-title">느린 정확성</div><div class="step-detail"><span class="step-piece">아스투리아스</span>어려운 마디를 60 BPM으로</div></div>
+        <button class="step-check" aria-label="완료">✓</button>
+      </div>
+      <div class="practice-step">
+        <div class="step-time">10<small>MIN</small></div>
+        <div><div class="step-title">모의 연주</div><div class="step-detail"><span class="step-piece">라그리마</span>멈추지 않고 끝까지</div></div>
+        <button class="step-check" aria-label="완료">✓</button>
+      </div>
+    </div>
+  </section>
+  <section class="practice-panel">
+    <div class="timer-card">
+      <div class="timer-label">Focus timer</div>
+      <div class="timer-clock">15:00</div>
+      <div class="timer-actions">
+        <button class="timer-btn primary">시작</button>
+        <button class="timer-btn">초기화</button>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

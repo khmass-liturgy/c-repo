@@ -1,0 +1,28 @@
+<!-- @dsCard group="Practice" height=260 -->
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>Metronome — static preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap">
+</head>
+<body>
+<div class="ds-pad" style="max-width:360px">
+  <div class="metronome running">
+    <div class="metronome-head">
+      <div><div class="metronome-title">메트로놈</div><div class="metronome-sub">느리게 시작해 정확히</div></div>
+      <div class="metronome-running">PLAYING</div>
+    </div>
+    <div class="metronome-bpm">
+      <button class="metro-step" aria-label="느리게">−</button>
+      <div class="metro-readout"><strong>72</strong><span>BPM</span></div>
+      <button class="metro-step" aria-label="빠르게">+</button>
+    </div>
+    <input class="metro-slider" id="m-bpm" type="range" min="40" max="208" value="72" aria-label="BPM">
+    <div class="metronome-footer">
+      <button class="metro-toggle active">정지</button>
+      <button class="metro-beats">4박</button>
+    </div>
+    <div class="metro-dots"><span class="metro-dot accent"></span><span class="metro-dot active"></span><span class="metro-dot"></span><span class="metro-dot"></span></div>
+  </div>
+</div>
+</body>
+</html>

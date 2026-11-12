@@ -1,0 +1,49 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>나의 연습실</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400&family=Noto+Serif+KR:wght@700&display=swap">
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--page); color:var(--cream); font-family:var(--font-sans); overflow:hidden; }
+  .cover { position:relative; width:960px; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
+  .art svg { display:block; width:480px; height:288px; }
+  .gold { fill:var(--gold); }
+  .gold2 { fill:var(--gold2); }
+  .amber { fill:var(--amber); }
+  .green { fill:var(--green); }
+  .hero { rx:var(--radius-18); }
+  .panel { rx:var(--radius-14); }
+  .string { stroke:var(--page); stroke-width:2; fill:none; }
+  .words { position:absolute; left:var(--space-30); bottom:var(--space-30); max-width:440px; }
+  .name { margin:0; font-family:var(--font-serif); font-size:80px; line-height:.95; font-weight:700; letter-spacing:-1.5px; color:var(--cream); }
+  .tag { margin:var(--space-14) 0 0 2px; font-size:14px; line-height:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      gold 160×228 slab bled off the top (the accent, largest) · gold2 disc r=90 (the bright gold of live readouts) · amber 90×162 bleeding off the right edge · green 60×18 pill once (it only ever means done or synced)
+  arrangement one tall gold slab with satellites: a disc at centre and an amber slab leaving the frame, space-20 in from the box edge
+  pattern     literal motif, the six strings of a guitar: six rules in page (the ground cut out of the blocks) at a space-10 pitch, crossing slab, sound-hole disc and amber slab; invisible on the ground itself
+  scales      inset space-20; string pitch space-10; slab corners radius-18, amber radius-14, pill rx 9 (half its 18px height, radius-9)
+-->
+<rect class="gold hero" x="20" y="-18" width="160" height="228" rx="18"/>
+<circle class="gold2" cx="300" cy="150" r="90"/>
+<rect class="amber panel" x="410" y="108" width="90" height="162" rx="14"/>
+<rect class="green" x="20" y="230" width="60" height="18" rx="9"/>
+<path class="string" d="M0 125H480M0 135H480M0 145H480M0 155H480M0 165H480M0 175H480"/>
+</svg>
+</div>
+<div class="words">
+  <h1 class="name">나의 연습실</h1>
+  <p class="tag">Classical Guitar Practice Studio</p>
+</div>
+</div>
+</body>
+</html>
