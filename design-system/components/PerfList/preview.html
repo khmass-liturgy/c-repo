@@ -1,0 +1,21 @@
+<!-- @dsCard group="Forms" height=230 -->
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>PerfList — static preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap">
+</head>
+<body>
+<div class="ds-pad" style="max-width:480px">
+  <span class="modal-label">공연 이력</span>
+  <div class="perf-list">
+    <div class="perf-item"><span class="perf-date">2026.10.18</span><span class="perf-venue">성당 대성전</span><button class="perf-del" aria-label="삭제">×</button></div>
+    <div class="perf-item"><span class="perf-date">2026.06.06</span><span class="perf-venue">문화회관 소극장</span><button class="perf-del" aria-label="삭제">×</button></div>
+  </div>
+  <div class="add-perf">
+    <button class="date-trigger"><span class="dt-icon">📅</span><span class="dt-val">날짜 선택</span></button>
+    <input class="mini-input" id="pl-venue" placeholder="장소" aria-label="장소">
+    <button class="btn-add">＋ 추가</button>
+  </div>
+</div>
+</body>
+</html>

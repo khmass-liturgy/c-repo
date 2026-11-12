@@ -1,0 +1,30 @@
+<!-- @dsCard group="Practice" height=400 -->
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>Tuner — static preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap">
+</head>
+<body>
+<div class="ds-pad" style="max-width:380px"><section class="practice-panel">
+  <div class="tuner running">
+    <div class="metronome-head">
+      <div><div class="metronome-title">기타 조율기</div><div class="metronome-sub">마이크로 개방현 음정을 확인합니다</div></div>
+      <div class="metronome-running">LISTENING</div>
+    </div>
+    <div class="tuner-reference"><label for="t-a4">기준음 A4</label><select class="form-select" id="t-a4"><option>442 Hz</option><option>440 Hz</option></select></div>
+    <div class="tuner-reference-hint">실제 조율기의 A4 설정과 같게 맞추세요. 선택은 이 기기에 저장됩니다.</div>
+    <div class="tuner-display">
+      <div><div class="tuner-note">A2</div><div class="tuner-frequency">110.5 Hz</div></div>
+      <div>
+        <div class="tuner-meter" aria-label="음정 편차"><span class="tuner-needle in-tune" style="left:51%"></span></div>
+        <div class="tuner-scale"><span>♭ 낮음</span><span>정확</span><span>♯ 높음</span></div>
+      </div>
+    </div>
+    <div class="tuner-status">조용한 곳에서 한 줄씩 튕겨주세요</div>
+    <div class="tuner-strings" aria-label="기타 개방현 기준음">
+      <span class="tuner-string"><strong>E2</strong>6번줄</span><span class="tuner-string active"><strong>A2</strong>5번줄</span><span class="tuner-string"><strong>D3</strong>4번줄</span><span class="tuner-string"><strong>G3</strong>3번줄</span><span class="tuner-string"><strong>B3</strong>2번줄</span><span class="tuner-string"><strong>E4</strong>1번줄</span>
+    </div>
+  </div>
+</section></div>
+</body>
+</html>
